@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Mini Doodle</title>
+<style>
+body { margin:0; overflow:hidden; background:#87CEEB; }
+canvas { background:white; display:block; margin:0 auto; }
+</style>
+</head>
+<body>
+
+<canvas id="game"></canvas>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+canvas.width = 400;
+canvas.height = 600;
+
+let gravity = 0.4;
+
+let player = {
+  x:180,
+  y:500,
+  width:40,
+  height:40,
+  velocityY:0,
+  jump:-10
+};
+
+let platforms = [];
+
+function createPlatforms(){
+  for(let i=0;i<6;i++){
+    platforms.push({
+      x:Math.random()*350,
+      y:i*100,
+      width:60,
+      height:10
+    });
+  }
+}
+
+function drawPlayer(){
+  ctx.fillStyle="green";
+  ctx.fillRect(player.x,player.y,player.width,player.height);
+}
+
+function drawPlatforms(){
+  ctx.fillStyle="black";
+  platforms.forEach(p=>{
+    ctx.fillRect(p.x,p.y,p.width,p.height);
+  });
+}
+
+function update(){
+  player.velocityY += gravity;
+  player.y += player.velocityY;
+
+  platforms.forEach(p=>{
+    if(
+      player.y + player.height < p.y + 10 &&
+      player.y + player.height > p.y &&
+      player.x + player.width > p.x &&
+      player.x < p.x + p.width &&
+      player.velocityY > 0
+    ){
+      player.velocityY = player.jump;
+    }
+  });
+
+  if(player.y < 250){
+    platforms.forEach(p=>{
+      p.y += -player.velocityY;
+    });
+  }
+
+  if(player.y > canvas.height){
+    alert("Game Over");
+    location.reload();
+  }
+}
+
+function loop(){
+  ctx.clearRect(0,0,400,600);
+  update();
+  drawPlayer();
+  drawPlatforms();
+  requestAnimationFrame(loop);
+}
+
+document.addEventListener("touchstart",e=>{
+  if(e.touches[0].clientX < 200) player.x -= 40;
+  else player.x += 40;
+});
+
+createPlatforms();
+loop();
+</script>
+
+</body>
+</html>
