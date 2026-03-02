@@ -73,10 +73,16 @@ function update(){
   });
 
   if(player.y < 250){
-    platforms.forEach(p=>{
-      p.y += -player.velocityY;
-    });
-  }
+  platforms.forEach(p=>{
+    p.y += -player.velocityY;
+
+    // если платформа ушла вниз — создаём новую сверху
+    if(p.y > canvas.height){
+      p.y = 0;
+      p.x = Math.random() * 350;
+    }
+  });
+}
 
   if(player.y > canvas.height){
     alert("Game Over");
