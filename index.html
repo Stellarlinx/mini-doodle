@@ -31,6 +31,7 @@ let player = {
 };
 
 let platforms = [];
+let score = 0;
 
 function createPlatforms(){
   for(let i=0;i<6;i++){
@@ -67,7 +68,7 @@ function update(){
       player.x < p.x + p.width &&
       player.velocityY > 0
     ){
-      player.velocityY = player.jump;
+      player.velocityY = player.jump;score++;
     }
   });
 
@@ -88,7 +89,10 @@ function loop(){
   update();
   drawPlayer();
   drawPlatforms();
-  requestAnimationFrame(loop);
+  ctx.fillStyle = "black";
+ctx.font = "20px Arial";
+ctx.fillText("Score: " + score, 10, 30);
+requestAnimationFrame(loop);
 }
 
 document.addEventListener("touchstart",e=>{
