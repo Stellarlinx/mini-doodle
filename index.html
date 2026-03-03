@@ -33,7 +33,26 @@ let player = {
 let platforms = [];
 let score = 0;
 
-function createPlatforms(){
+ function createPlatforms(){
+  platforms = [];
+
+  // первая платформа всегда под игроком
+  platforms.push({
+    x: player.x,
+    y: player.y + 50,
+    width: 60,
+    height: 10
+  });
+
+  for(let i=1;i<6;i++){
+    platforms.push({
+      x: Math.random()*350,
+      y: i*100,
+      width: 60,
+      height: 10
+    });
+  }
+}{
   for(let i=0;i<6;i++){
     platforms.push({
       x:Math.random()*350,
