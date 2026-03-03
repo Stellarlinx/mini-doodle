@@ -16,8 +16,8 @@ canvas { background:white; display:block; margin:0 auto; }
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-canvas.width = 400;
-canvas.height = 600;
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
 
 let gravity = 0.4;
 
@@ -26,8 +26,8 @@ let player = {
   y:500,
   width:40,
   height:40,
-  velocityY:-10,
-  jump:-10
+  velocityY:-15,
+  jump:-15
 };
 
 let platforms = [];
@@ -91,7 +91,7 @@ function update(){
     }
   });
 
-  if(player.y < 250){
+  if(player.y < canvas.height / 2){
   platforms.forEach(p=>{
     p.y += -player.velocityY;
 
