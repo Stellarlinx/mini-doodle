@@ -97,10 +97,14 @@ function update(){
       p.y += -player.velocityY;
 
       if(p.y > canvas.height){
-        p.y = 0;
-        p.x = Math.random() * (canvas.width - 60);
-        p.counted = false;
-      }
+
+  // находим самую верхнюю платформу
+  let highestPlatform = Math.min(...platforms.map(pl => pl.y));
+
+  p.y = highestPlatform - 90; // 90 = расстояние между платформами
+  p.x = Math.random() * (canvas.width - 80);
+  p.counted = false;
+}
     });
   }
 
