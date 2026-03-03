@@ -36,23 +36,14 @@ let score = 0;
 function createPlatforms(){
   platforms = [];
 
-  let gap = 90; // расстояние между платформами
+  let gap = 90;
+  let numberOfPlatforms = Math.ceil(canvas.height / gap);
 
-  // первая платформа под игроком
-  platforms.push({
-    x: player.x - 20,
-    y: player.y + player.height + 5,
-    width: 80,
-    height: 12,
-    counted: false
-  });
-
-  // остальные платформы строятся ВВЕРХ от игрока
-  for(let i=1;i<10;i++){
+  for(let i = 0; i < numberOfPlatforms; i++){
     platforms.push({
       x: Math.random() * (canvas.width - 80),
-      y: player.y - (i * gap),
-      width: 70,
+      y: canvas.height - i * gap,
+      width: 80,
       height: 12,
       counted: false
     });
@@ -77,12 +68,12 @@ function update(){
 
   platforms.forEach(p=>{
     if(
-      player.y + player.height >= p.y &&
-      player.y + player.height <= p.y + p.height &&
-      player.x + player.width > p.x &&
-      player.x < p.x + p.width &&
-      player.velocityY > 0
-    ){
+  player.velocityY > 0 &&
+  player.y + player.height >= p.y &&
+  player.y + player.height <= p.y + p.height + player.velocityY &&
+  player.x + player.width > p.x &&
+  player.x < p.x + p.width
+){
       player.velocityY = player.jump;
 
       if(!p.counted){
@@ -96,7 +87,14 @@ function update(){
     platforms.forEach(p=>{
       p.y += -player.velocityY;
 
-      if(p.y > canvas.height){
+if(p.y > canvas.height){
+
+  let highestPlatform = Math.min(...platforms.map(pl => pl.y));
+
+  p.y = highestPlatform - 90;
+  p.x = Math.random() * (canvas.width - 80);
+  p.counted = false;
+}
 
   // находим самую верхнюю платформу
   let highestPlatform = Math.min(...platforms.map(pl => pl.y));
