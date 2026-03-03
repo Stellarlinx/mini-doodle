@@ -6,6 +6,12 @@
 <title>Doodle Jump</title>
 
 <style>
+* {
+  user-select: none;
+  -webkit-user-select: none;
+  -ms-user-select: none;
+}
+
 html, body {
   margin: 0;
   padding: 0;
@@ -43,6 +49,7 @@ canvas {
   width: 100%;
   padding: 8px;
   margin-bottom: 10px;
+  user-select: text;
 }
 
 .skins {
@@ -107,20 +114,19 @@ addEventListener("resize", resize);
 const startScreen = document.getElementById("startScreen");
 const nameInput = document.getElementById("nameInput");
 
-/* ---------- PLAYER DATA ---------- */
+/* ---------- STORAGE ---------- */
 let playerName = localStorage.getItem("playerName") || "";
 let playerColor = localStorage.getItem("playerColor") || "green";
-
 nameInput.value = playerName;
 
 /* ---------- SKINS ---------- */
-document.querySelectorAll(".skin").forEach(skin => {
-  if (skin.dataset.color === playerColor) skin.classList.add("selected");
+document.querySelectorAll(".skin").forEach(s => {
+  if (s.dataset.color === playerColor) s.classList.add("selected");
 
-  skin.onclick = () => {
-    document.querySelectorAll(".skin").forEach(s => s.classList.remove("selected"));
-    skin.classList.add("selected");
-    playerColor = skin.dataset.color;
+  s.onclick = () => {
+    document.querySelectorAll(".skin").forEach(x => x.classList.remove("selected"));
+    s.classList.add("selected");
+    playerColor = s.dataset.color;
   };
 });
 
@@ -129,6 +135,7 @@ let gameStarted = false;
 let gravity = 0.4;
 let score = 0;
 
+/* ---------- PLAYER ---------- */
 const player = {
   x: 0,
   y: 0,
@@ -140,8 +147,9 @@ const player = {
 };
 
 let platforms = [];
+let monsters = [];
 
-/* ---------- START BUTTON ---------- */
+/* ---------- START ---------- */
 document.getElementById("playBtn").onclick = () => {
   playerName = nameInput.value || "Player";
   localStorage.setItem("playerName", playerName);
@@ -151,33 +159,37 @@ document.getElementById("playBtn").onclick = () => {
   startGame();
 };
 
-/* ---------- START GAME ---------- */
 function startGame() {
   score = 0;
   platforms = [];
+  monsters = [];
   gameStarted = true;
 
   player.x = canvas.width / 2 - player.w / 2;
   player.y = canvas.height - 200;
   player.vy = player.jump;
 
-  platforms.push({
-    x: player.x - 20,
-    y: player.y + 50,
-    w: 100,
-    h: 12,
-    counted: true
-  });
+  platforms.push(createPlatform(player.y + 60, "normal", true));
 
-  for (let i = 1; i < 12; i++) {
-    platforms.push({
-      x: Math.random() * (canvas.width - 80),
-      y: platforms[i - 1].y - 90,
-      w: 80,
-      h: 12,
-      counted: false
-    });
+  for (let i = 1; i < 14; i++) {
+    platforms.push(createPlatform(platforms[i - 1].y - 90));
   }
+}
+
+/* ---------- PLATFORM FACTORY ---------- */
+function createPlatform(y, forcedType = null, counted = false) {
+  const r = Math.random();
+  const type = forcedType || (r < 0.15 ? "moving" : r < 0.3 ? "break" : "normal");
+
+  return {
+    x: Math.random() * (canvas.width - 80),
+    y,
+    w: 80,
+    h: 12,
+    type,
+    dx: Math.random() < 0.5 ? -1 : 1,
+    counted
+  };
 }
 
 /* ---------- UPDATE ---------- */
@@ -192,6 +204,11 @@ function update() {
   if (player.x > canvas.width) player.x = -player.w;
 
   platforms.forEach(p => {
+    if (p.type === "moving") {
+      p.x += p.dx * 1.2;
+      if (p.x < 0 || p.x + p.w > canvas.width) p.dx *= -1;
+    }
+
     if (
       player.vy > 0 &&
       player.y + player.h >= p.y &&
@@ -199,11 +216,39 @@ function update() {
       player.x + player.w > p.x &&
       player.x < p.x + p.w
     ) {
-      player.vy = player.jump;
-      if (!p.counted) {
-        score++;
-        p.counted = true;
+      if (p.type === "break") {
+        p.y = canvas.height + 100;
+      } else {
+        player.vy = player.jump;
+        if (!p.counted) {
+          score++;
+          p.counted = true;
+        }
       }
+    }
+  });
+
+  if (score >= 6 && Math.random() < 0.01 && monsters.length < 3) {
+    monsters.push({
+      x: Math.random() * (canvas.width - 40),
+      y: -40,
+      w: 40,
+      h: 40,
+      dx: Math.random() < 0.5 ? -1 : 1
+    });
+  }
+
+  monsters.forEach(m => {
+    m.x += m.dx * 1.5;
+    if (m.x < 0 || m.x + m.w > canvas.width) m.dx *= -1;
+
+    if (
+      player.x < m.x + m.w &&
+      player.x + player.w > m.x &&
+      player.y < m.y + m.h &&
+      player.y + player.h > m.y
+    ) {
+      startGame();
     }
   });
 
@@ -211,20 +256,17 @@ function update() {
     const dy = -player.vy;
     player.y = canvas.height / 2;
     platforms.forEach(p => p.y += dy);
+    monsters.forEach(m => m.y += dy);
 
     platforms.forEach(p => {
       if (p.y > canvas.height) {
         const top = Math.min(...platforms.map(pl => pl.y));
-        p.y = top - 90;
-        p.x = Math.random() * (canvas.width - p.w);
-        p.counted = false;
+        Object.assign(p, createPlatform(top - 90));
       }
     });
   }
 
-  if (player.y > canvas.height) {
-    startGame();
-  }
+  if (player.y > canvas.height) startGame();
 }
 
 /* ---------- DRAW ---------- */
@@ -234,8 +276,15 @@ function draw() {
   ctx.fillStyle = playerColor;
   ctx.fillRect(player.x, player.y, player.w, player.h);
 
-  ctx.fillStyle = "black";
-  platforms.forEach(p => ctx.fillRect(p.x, p.y, p.w, p.h));
+  platforms.forEach(p => {
+    ctx.fillStyle =
+      p.type === "moving" ? "blue" :
+      p.type === "break" ? "brown" : "black";
+    ctx.fillRect(p.x, p.y, p.w, p.h);
+  });
+
+  ctx.fillStyle = "purple";
+  monsters.forEach(m => ctx.fillRect(m.x, m.y, m.w, m.h));
 
   ctx.fillStyle = "black";
   ctx.font = "20px Arial";
@@ -252,22 +301,22 @@ loop();
 
 /* ---------- CONTROLS ---------- */
 canvas.addEventListener("touchstart", e => {
+  e.preventDefault();
   const x = e.touches[0].clientX;
   player.speedX = x < canvas.width / 2 ? -4 : 4;
-});
+}, { passive: false });
 
-canvas.addEventListener("touchend", () => {
+canvas.addEventListener("touchend", e => {
+  e.preventDefault();
   player.speedX = 0;
-});
+}, { passive: false });
 
 addEventListener("keydown", e => {
   if (e.key === "ArrowLeft") player.speedX = -4;
   if (e.key === "ArrowRight") player.speedX = 4;
 });
 
-addEventListener("keyup", () => {
-  player.speedX = 0;
-});
+addEventListener("keyup", () => player.speedX = 0);
 </script>
 
 </body>
