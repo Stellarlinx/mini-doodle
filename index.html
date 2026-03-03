@@ -249,13 +249,56 @@ function update(){
     }
   });
 
-  if(player.y < canvas.height / 2){
-    let dy = -player.velocityY;
-    platforms.forEach(p=>p.y += dy);
-    springs.forEach(s=>s.y += dy);
-    monsters.forEach(m=>m.y += dy);
-    player.y = canvas.height / 2;
-  }
+ if(player.y < canvas.height / 2){
+  const dy = -player.velocityY;
+
+  platforms.forEach(p => p.y += dy);
+  springs.forEach(s => s.y += dy);
+  monsters.forEach(m => m.y += dy);
+
+  player.y = canvas.height / 2;
+
+  // 🔁 пересоздание платформ
+  platforms.forEach(p => {
+    if(p.y > canvas.height){
+      const highest = Math.min(...platforms.map(pl => pl.y));
+
+      p.y = highest - 90;
+      p.x = Math.random() * (canvas.width - p.width);
+      p.counted = false;
+
+      // 🎲 тип платформы
+      const r = Math.random();
+      p.type = r < 0.15 ? "moving" : r > 0.85 ? "break" : "normal";
+      p.dir = Math.random() < 0.5 ? -1 : 1;
+
+      // ❌ убрать старые пружины и монстров с этой платформы
+      springs = springs.filter(s => s.y < canvas.height);
+      monsters = monsters.filter(m => m.y < canvas.height);
+
+      // ➕ шанс добавить пружину
+      if(Math.random() < 0.1){
+        springs.push({
+          x: p.x + p.width / 2 - 10,
+          y: p.y - 12,
+          width: 20,
+          height: 12
+        });
+      }
+
+      // ➕ шанс добавить монстра
+      if(Math.random() < 0.08){
+        monsters.push({
+          x: p.x + p.width / 2 - 20,
+          y: p.y - 40,
+          width: 40,
+          height: 40,
+          dir: Math.random() < 0.5 ? -1 : 1
+        });
+      }
+    }
+  });
+}
 
   if(player.y > canvas.height){
     gameOver();
