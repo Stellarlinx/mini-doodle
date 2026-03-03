@@ -6,7 +6,20 @@
 <title>Doodle Jump</title>
 
 <style>
-* { user-select:none; -webkit-user-select:none; }
+canvas, #hud {
+  user-select: none;
+  -webkit-user-select: none;
+  touch-action: none;
+}
+
+#startScreen, #menu, #menu * {
+  pointer-events: auto;
+}
+
+#menu input {
+  user-select: text;
+  -webkit-user-select: text;
+}
 
 html, body {
   margin:0;
@@ -19,7 +32,6 @@ html, body {
 canvas {
   display:block;
   background:white;
-  touch-action:none;
 }
 
 /* ---------- MENU ---------- */
@@ -45,7 +57,6 @@ canvas {
   width:100%;
   padding:8px;
   margin-bottom:10px;
-  user-select:text;
 }
 
 .skins {
@@ -276,18 +287,28 @@ function loop(){ update(); draw(); requestAnimationFrame(loop); }
 loop();
 
 /* ---------- CONTROLS ---------- */
-canvas.addEventListener("touchstart",e=>{
+canvas.addEventListener("touchstart", e => {
+  if (!gameStarted) return;
   e.preventDefault();
   player.speedX = e.touches[0].clientX < canvas.width/2 ? -4 : 4;
 },{passive:false});
-canvas.addEventListener("touchend",e=>{
-  e.preventDefault(); player.speedX=0;
+
+canvas.addEventListener("touchend", e => {
+  if (!gameStarted) return;
+  e.preventDefault();
+  player.speedX = 0;
 },{passive:false});
-addEventListener("keydown",e=>{
+
+addEventListener("keydown", e => {
+  if (!gameStarted) return;
   if(e.key==="ArrowLeft") player.speedX=-4;
   if(e.key==="ArrowRight") player.speedX=4;
 });
-addEventListener("keyup",()=>player.speedX=0);
+
+addEventListener("keyup", () => {
+  if (!gameStarted) return;
+  player.speedX=0;
+});
 </script>
 
 </body>
