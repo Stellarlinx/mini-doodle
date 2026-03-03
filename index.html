@@ -114,7 +114,9 @@ const startScreen = document.getElementById("startScreen");
 const nameInput = document.getElementById("nameInput");
 
 if (playerName) {
+  nameInput.value = playerName;
   startScreen.style.display = "none";
+  startGame(); // 🔥 ВАЖНО
 }
 
 document.querySelectorAll(".skin").forEach(skin => {
