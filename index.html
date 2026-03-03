@@ -11,13 +11,62 @@ html, body {
   padding: 0;
   overflow: hidden;
   background: #87CEEB;
-  touch-action: none;
   font-family: Arial;
 }
 canvas {
   display: block;
   background: white;
 }
+
+/* ---------- UI ---------- */
+#startScreen {
+  position: fixed;
+  inset: 0;
+  background: rgba(135,206,235,0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+#menu {
+  background: white;
+  padding: 20px;
+  border-radius: 12px;
+  width: 260px;
+  text-align: center;
+}
+
+#menu input {
+  width: 100%;
+  padding: 8px;
+  margin-bottom: 10px;
+}
+
+.skins {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.skin {
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  border: 2px solid transparent;
+  cursor: pointer;
+}
+
+.skin.selected {
+  border-color: black;
+}
+
+button {
+  width: 100%;
+  padding: 10px;
+  font-size: 16px;
+}
+
 #leaderboard {
   position: fixed;
   top: 10px;
@@ -32,20 +81,26 @@ canvas {
 
 <body>
 
+<div id="startScreen">
+  <div id="menu">
+    <h3>Doodle Jump</h3>
+    <input id="nameInput" placeholder="Введите имя">
+
+    <div class="skins">
+      <div class="skin selected" data-color="green" style="background:green"></div>
+      <div class="skin" data-color="blue" style="background:blue"></div>
+      <div class="skin" data-color="red" style="background:red"></div>
+      <div class="skin" data-color="purple" style="background:purple"></div>
+    </div>
+
+    <button id="playBtn">PLAY</button>
+  </div>
+</div>
+
 <canvas id="game"></canvas>
 <div id="leaderboard"></div>
 
 <script>
-/* ---------- ИМЯ И ЛИДЕРБОРД ---------- */
-let playerName = localStorage.getItem("playerName");
-if(!playerName){
-  playerName = prompt("Введите имя:");
-  if(!playerName) playerName = "Player";
-  localStorage.setItem("playerName", playerName);
-}
-
-let leaderboard = JSON.parse(localStorage.getItem("leaderboard")) || [];
-
 /* ---------- CANVAS ---------- */
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
@@ -57,134 +112,97 @@ function resize(){
 resize();
 window.addEventListener("resize", resize);
 
-/* ---------- ПЕРЕМЕННЫЕ ---------- */
-let gravity = 0.4;
+/* ---------- DATA ---------- */
+let playerName = "";
+let playerColor = "green";
 let score = 0;
 let gameStarted = false;
+let monsterUnlock = Math.floor(5 + Math.random() * 6);
 
-let player = {
+let leaderboard = JSON.parse(localStorage.getItem("leaderboard")) || [];
+
+/* ---------- PLAYER ---------- */
+const player = {
   x: canvas.width / 2 - 20,
   y: canvas.height - 200,
   width: 40,
   height: 40,
   velocityY: 0,
   jump: -15,
-  superJump: -25,
   speedX: 0
 };
 
+let gravity = 0.4;
 let platforms = [];
-let springs = [];
 let monsters = [];
 
-/* ---------- ПЛАТФОРМЫ ---------- */
-function createPlatforms(){
+/* ---------- START ---------- */
+document.querySelectorAll(".skin").forEach(s=>{
+  s.onclick = ()=>{
+    document.querySelectorAll(".skin").forEach(x=>x.classList.remove("selected"));
+    s.classList.add("selected");
+    playerColor = s.dataset.color;
+  };
+});
+
+document.getElementById("playBtn").onclick = ()=>{
+  playerName = document.getElementById("nameInput").value || "Player";
+  document.getElementById("startScreen").style.display = "none";
+  startGame();
+};
+
+/* ---------- GAME INIT ---------- */
+function startGame(){
   platforms = [];
-  springs = [];
   monsters = [];
   score = 0;
-
-  const gap = 90;
+  monsterUnlock = Math.floor(5 + Math.random() * 6);
 
   platforms.push({
     x: player.x,
-    y: player.y + player.height + 10,
+    y: player.y + 50,
     width: 100,
     height: 12,
-    type: "normal",
     counted: true
   });
 
-  const count = Math.ceil(canvas.height / gap);
-
-  for(let i = 1; i < count; i++){
-    let rand = Math.random();
-    let type = "normal";
-    if(rand < 0.15) type = "moving";
-    if(rand > 0.85) type = "break";
-
-    let p = {
-      x: Math.random() * (canvas.width - 80),
-      y: platforms[i - 1].y - gap,
+  for(let i=1;i<12;i++){
+    platforms.push({
+      x: Math.random()*(canvas.width-80),
+      y: platforms[i-1].y - 90,
       width: 80,
       height: 12,
-      type,
-      dir: Math.random() < 0.5 ? -1 : 1,
-      counted: false
-    };
-
-    platforms.push(p);
-
-    if(Math.random() < 0.1){
-      springs.push({
-        x: p.x + 30,
-        y: p.y - 12,
-        width: 20,
-        height: 12
-      });
-    }
-
-    if(Math.random() < 0.08){
-      monsters.push({
-        x: p.x + 20,
-        y: p.y - 40,
-        width: 40,
-        height: 40,
-        dir: Math.random() < 0.5 ? -1 : 1
-      });
-    }
+      counted:false
+    });
   }
 
   player.velocityY = player.jump;
   gameStarted = true;
 }
 
-/* ---------- РИСОВАНИЕ ---------- */
+/* ---------- DRAW ---------- */
 function drawPlayer(){
-  ctx.fillStyle = "green";
-  ctx.fillRect(player.x, player.y, player.width, player.height);
+  ctx.fillStyle = playerColor;
+  ctx.fillRect(player.x,player.y,player.width,player.height);
 }
 
 function drawPlatforms(){
-  platforms.forEach(p=>{
-    ctx.fillStyle =
-      p.type === "normal" ? "black" :
-      p.type === "moving" ? "blue" : "brown";
-    ctx.fillRect(p.x, p.y, p.width, p.height);
-  });
-}
-
-function drawSprings(){
-  ctx.fillStyle = "red";
-  springs.forEach(s=>{
-    ctx.fillRect(s.x, s.y, s.width, s.height);
-  });
+  ctx.fillStyle="black";
+  platforms.forEach(p=>ctx.fillRect(p.x,p.y,p.width,p.height));
 }
 
 function drawMonsters(){
-  ctx.fillStyle = "purple";
-  monsters.forEach(m=>{
-    ctx.fillRect(m.x, m.y, m.width, m.height);
-  });
+  ctx.fillStyle="purple";
+  monsters.forEach(m=>ctx.fillRect(m.x,m.y,m.width,m.height));
 }
 
 function drawScore(){
-  ctx.fillStyle = "black";
-  ctx.font = "20px Arial";
-  ctx.fillText(`${playerName}: ${score}`, 10, 30);
+  ctx.fillStyle="black";
+  ctx.font="20px Arial";
+  ctx.fillText(`${playerName}: ${score}`,10,30);
 }
 
-function updateLeaderboardUI(){
-  leaderboard.sort((a,b)=>b.score - a.score);
-  leaderboard = leaderboard.slice(0,5);
-  localStorage.setItem("leaderboard", JSON.stringify(leaderboard));
-
-  const div = document.getElementById("leaderboard");
-  div.innerHTML = "<b>🏆 ТОП-5</b><br>" +
-    leaderboard.map((p,i)=>`${i+1}. ${p.name}: ${p.score}`).join("<br>");
-}
-
-/* ---------- ОБНОВЛЕНИЕ ---------- */
+/* ---------- UPDATE ---------- */
 function update(){
   if(!gameStarted) return;
 
@@ -196,153 +214,108 @@ function update(){
   if(player.x > canvas.width) player.x = -player.width;
 
   platforms.forEach(p=>{
-    if(p.type === "moving"){
-      p.x += p.dir * 1.2;
-      if(p.x < 0 || p.x + p.width > canvas.width) p.dir *= -1;
-    }
-  });
-
-  monsters.forEach(m=>{
-    m.x += m.dir * 1;
-    if(m.x < 0 || m.x + m.width > canvas.width) m.dir *= -1;
-  });
-
-  platforms.forEach(p=>{
     if(
-      player.velocityY > 0 &&
-      player.y + player.height >= p.y &&
-      player.y + player.height <= p.y + p.height + player.velocityY &&
-      player.x + player.width > p.x &&
-      player.x < p.x + p.width
+      player.velocityY>0 &&
+      player.y+player.height>=p.y &&
+      player.y+player.height<=p.y+p.height+player.velocityY &&
+      player.x+player.width>p.x &&
+      player.x<p.x+p.width
     ){
-      if(p.type === "break"){
-        p.y = canvas.height + 100;
-      } else {
-        player.velocityY = player.jump;
-        if(!p.counted){
-          score++;
-          p.counted = true;
-        }
+      player.velocityY = player.jump;
+      if(!p.counted){
+        score++;
+        p.counted=true;
       }
     }
   });
 
-  springs.forEach(s=>{
-    if(
-      player.velocityY > 0 &&
-      player.y + player.height >= s.y &&
-      player.x + player.width > s.x &&
-      player.x < s.x + s.width
-    ){
-      player.velocityY = player.superJump;
-    }
-  });
-
   monsters.forEach(m=>{
     if(
-      player.x < m.x + m.width &&
-      player.x + player.width > m.x &&
-      player.y < m.y + m.height &&
-      player.y + player.height > m.y
+      player.x < m.x+m.width &&
+      player.x+player.width > m.x &&
+      player.y < m.y+m.height &&
+      player.y+player.height > m.y
     ){
       gameOver();
     }
   });
 
- if(player.y < canvas.height / 2){
-  const dy = -player.velocityY;
+  if(player.y < canvas.height/2){
+    const dy = -player.velocityY;
+    platforms.forEach(p=>p.y+=dy);
+    monsters.forEach(m=>m.y+=dy);
+    player.y = canvas.height/2;
 
-  platforms.forEach(p => p.y += dy);
-  springs.forEach(s => s.y += dy);
-  monsters.forEach(m => m.y += dy);
+    platforms.forEach(p=>{
+      if(p.y>canvas.height){
+        const top = Math.min(...platforms.map(x=>x.y));
+        p.y = top-90;
+        p.x = Math.random()*(canvas.width-p.width);
+        p.counted=false;
 
-  player.y = canvas.height / 2;
-
-  // 🔁 пересоздание платформ
-  platforms.forEach(p => {
-    if(p.y > canvas.height){
-      const highest = Math.min(...platforms.map(pl => pl.y));
-
-      p.y = highest - 90;
-      p.x = Math.random() * (canvas.width - p.width);
-      p.counted = false;
-
-      // 🎲 тип платформы
-      const r = Math.random();
-      p.type = r < 0.15 ? "moving" : r > 0.85 ? "break" : "normal";
-      p.dir = Math.random() < 0.5 ? -1 : 1;
-
-      // ❌ убрать старые пружины и монстров с этой платформы
-      springs = springs.filter(s => s.y < canvas.height);
-      monsters = monsters.filter(m => m.y < canvas.height);
-
-      // ➕ шанс добавить пружину
-      if(Math.random() < 0.1){
-        springs.push({
-          x: p.x + p.width / 2 - 10,
-          y: p.y - 12,
-          width: 20,
-          height: 12
-        });
+        if(score>=monsterUnlock && Math.random()<0.3){
+          monsters.push({
+            x:p.x+20,
+            y:p.y-40,
+            width:40,
+            height:40
+          });
+        }
       }
-
-      // ➕ шанс добавить монстра
-      if(Math.random() < 0.08){
-        monsters.push({
-          x: p.x + p.width / 2 - 20,
-          y: p.y - 40,
-          width: 40,
-          height: 40,
-          dir: Math.random() < 0.5 ? -1 : 1
-        });
-      }
-    }
-  });
-}
-
-  if(player.y > canvas.height){
-    gameOver();
+    });
   }
+
+  if(player.y>canvas.height) gameOver();
 }
 
+/* ---------- LEADERBOARD ---------- */
+function updateLeaderboard(){
+  const existing = leaderboard.find(p=>p.name===playerName);
+  if(existing){
+    if(score>existing.score) existing.score=score;
+  }else{
+    leaderboard.push({name:playerName,score});
+  }
+
+  leaderboard.sort((a,b)=>b.score-a.score);
+  localStorage.setItem("leaderboard",JSON.stringify(leaderboard));
+
+  document.getElementById("leaderboard").innerHTML =
+    "<b>🏆 ТОП-5</b><br>" +
+    leaderboard.slice(0,5).map((p,i)=>`${i+1}. ${p.name}: ${p.score}`).join("<br>");
+}
+
+/* ---------- GAME OVER ---------- */
 function gameOver(){
-  leaderboard.push({ name: playerName, score });
-  updateLeaderboardUI();
-  alert(`Game Over!\n${playerName}: ${score}`);
+  updateLeaderboard();
+  alert("Game Over!");
   location.reload();
 }
 
-/* ---------- ЦИКЛ ---------- */
+/* ---------- LOOP ---------- */
 function loop(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
   update();
   drawPlayer();
   drawPlatforms();
-  drawSprings();
   drawMonsters();
   drawScore();
   requestAnimationFrame(loop);
 }
-
-/* ---------- УПРАВЛЕНИЕ ---------- */
-document.addEventListener("touchstart", e=>{
-  e.preventDefault();
-  let x = e.touches[0].clientX;
-  player.speedX = x < canvas.width / 2 ? -4 : 4;
-}, { passive:false });
-
-document.addEventListener("touchend", ()=>player.speedX = 0);
-
-document.addEventListener("keydown", e=>{
-  if(e.key === "ArrowLeft") player.speedX = -4;
-  if(e.key === "ArrowRight") player.speedX = 4;
-});
-document.addEventListener("keyup", ()=>player.speedX = 0);
-
-/* ---------- СТАРТ ---------- */
-updateLeaderboardUI();
-createPlatforms();
 loop();
+
+/* ---------- CONTROLS ---------- */
+document.addEventListener("touchstart",e=>{
+  player.speedX = e.touches[0].clientX < canvas.width/2 ? -4 : 4;
+});
+document.addEventListener("touchend",()=>player.speedX=0);
+
+document.addEventListener("keydown",e=>{
+  if(e.key==="ArrowLeft") player.speedX=-4;
+  if(e.key==="ArrowRight") player.speedX=4;
+});
+document.addEventListener("keyup",()=>player.speedX=0);
 </script>
+
 </body>
 </html>
