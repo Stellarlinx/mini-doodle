@@ -12,13 +12,12 @@ html, body {
   overflow: hidden;
   background: #87CEEB;
   font-family: Arial;
+  touch-action: none;
 }
 canvas {
   display: block;
   background: white;
 }
-
-/* ---------- UI ---------- */
 #startScreen {
   position: fixed;
   inset: 0;
@@ -28,7 +27,6 @@ canvas {
   justify-content: center;
   z-index: 10;
 }
-
 #menu {
   background: white;
   padding: 20px;
@@ -36,37 +34,15 @@ canvas {
   width: 260px;
   text-align: center;
 }
-
-#menu input {
-  width: 100%;
-  padding: 8px;
-  margin-bottom: 10px;
-}
-
-.skins {
-  display: flex;
-  justify-content: space-between;
-  margin-bottom: 10px;
-}
-
 .skin {
   width: 40px;
   height: 40px;
+  display: inline-block;
   border-radius: 6px;
+  margin: 5px;
   border: 2px solid transparent;
-  cursor: pointer;
 }
-
-.skin.selected {
-  border-color: black;
-}
-
-button {
-  width: 100%;
-  padding: 10px;
-  font-size: 16px;
-}
-
+.skin.selected { border-color: black; }
 #leaderboard {
   position: fixed;
   top: 10px;
@@ -84,15 +60,13 @@ button {
 <div id="startScreen">
   <div id="menu">
     <h3>Doodle Jump</h3>
-    <input id="nameInput" placeholder="Введите имя">
-
-    <div class="skins">
+    <input id="nameInput" placeholder="Имя"><br><br>
+    <div id="skins">
       <div class="skin selected" data-color="green" style="background:green"></div>
       <div class="skin" data-color="blue" style="background:blue"></div>
       <div class="skin" data-color="red" style="background:red"></div>
       <div class="skin" data-color="purple" style="background:purple"></div>
-    </div>
-
+    </div><br>
     <button id="playBtn">PLAY</button>
   </div>
 </div>
@@ -104,40 +78,22 @@ button {
 /* ---------- CANVAS ---------- */
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
-
 function resize(){
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
+  canvas.width = innerWidth;
+  canvas.height = innerHeight;
 }
 resize();
-window.addEventListener("resize", resize);
 
-/* ---------- DATA ---------- */
-let playerName = "";
-let playerColor = "green";
-let score = 0;
-let gameStarted = false;
-let monsterUnlock = Math.floor(5 + Math.random() * 6);
+/* ---------- STORAGE ---------- */
+let playerName = localStorage.getItem("name");
+let playerColor = localStorage.getItem("color") || "green";
 
-let leaderboard = JSON.parse(localStorage.getItem("leaderboard")) || [];
+/* ---------- UI ---------- */
+const startScreen = document.getElementById("startScreen");
+if(playerName) startScreen.style.display = "none";
 
-/* ---------- PLAYER ---------- */
-const player = {
-  x: canvas.width / 2 - 20,
-  y: canvas.height - 200,
-  width: 40,
-  height: 40,
-  velocityY: 0,
-  jump: -15,
-  speedX: 0
-};
-
-let gravity = 0.4;
-let platforms = [];
-let monsters = [];
-
-/* ---------- START ---------- */
 document.querySelectorAll(".skin").forEach(s=>{
+  if(s.dataset.color === playerColor) s.classList.add("selected");
   s.onclick = ()=>{
     document.querySelectorAll(".skin").forEach(x=>x.classList.remove("selected"));
     s.classList.add("selected");
@@ -147,174 +103,167 @@ document.querySelectorAll(".skin").forEach(s=>{
 
 document.getElementById("playBtn").onclick = ()=>{
   playerName = document.getElementById("nameInput").value || "Player";
-  document.getElementById("startScreen").style.display = "none";
+  localStorage.setItem("name",playerName);
+  localStorage.setItem("color",playerColor);
+  startScreen.style.display="none";
   startGame();
 };
 
-/* ---------- GAME INIT ---------- */
+/* ---------- GAME ---------- */
+let gravity = 0.4;
+let score = 0;
+let platforms = [];
+let monsters = [];
+
+const player = {
+  x: canvas.width/2-20,
+  y: canvas.height-200,
+  width: 40,
+  height: 40,
+  vy: 0,
+  jump: -15,
+  speedX: 0
+};
+
 function startGame(){
-  platforms = [];
-  monsters = [];
-  score = 0;
-  monsterUnlock = Math.floor(5 + Math.random() * 6);
+  score=0;
+  platforms=[];
+  monsters=[];
+  player.y = canvas.height-200;
+  player.vy = player.jump;
 
   platforms.push({
     x: player.x,
-    y: player.y + 50,
+    y: player.y+50,
     width: 100,
     height: 12,
+    type: "normal",
     counted: true
   });
 
   for(let i=1;i<12;i++){
-    platforms.push({
-      x: Math.random()*(canvas.width-80),
-      y: platforms[i-1].y - 90,
-      width: 80,
-      height: 12,
-      counted:false
-    });
+    platforms.push(createPlatform(platforms[i-1].y-90));
   }
-
-  player.velocityY = player.jump;
-  gameStarted = true;
 }
 
-/* ---------- DRAW ---------- */
-function drawPlayer(){
-  ctx.fillStyle = playerColor;
-  ctx.fillRect(player.x,player.y,player.width,player.height);
-}
-
-function drawPlatforms(){
-  ctx.fillStyle="black";
-  platforms.forEach(p=>ctx.fillRect(p.x,p.y,p.width,p.height));
-}
-
-function drawMonsters(){
-  ctx.fillStyle="purple";
-  monsters.forEach(m=>ctx.fillRect(m.x,m.y,m.width,m.height));
-}
-
-function drawScore(){
-  ctx.fillStyle="black";
-  ctx.font="20px Arial";
-  ctx.fillText(`${playerName}: ${score}`,10,30);
+function createPlatform(y){
+  const r = Math.random();
+  return {
+    x: Math.random()*(canvas.width-80),
+    y,
+    width: 80,
+    height: 12,
+    type: r<0.15?"moving":r>0.85?"break":"normal",
+    dir: Math.random()<0.5?-1:1,
+    counted:false
+  };
 }
 
 /* ---------- UPDATE ---------- */
 function update(){
-  if(!gameStarted) return;
-
-  player.velocityY += gravity;
-  player.y += player.velocityY;
+  player.vy += gravity;
+  player.y += player.vy;
   player.x += player.speedX;
 
-  if(player.x < -player.width) player.x = canvas.width;
-  if(player.x > canvas.width) player.x = -player.width;
+  if(player.x<-player.width) player.x=canvas.width;
+  if(player.x>canvas.width) player.x=-player.width;
 
   platforms.forEach(p=>{
+    if(p.type==="moving"){
+      p.x+=p.dir*1.2;
+      if(p.x<0||p.x+p.width>canvas.width) p.dir*=-1;
+    }
+
     if(
-      player.velocityY>0 &&
+      player.vy>0 &&
       player.y+player.height>=p.y &&
-      player.y+player.height<=p.y+p.height+player.velocityY &&
+      player.y+player.height<=p.y+p.height+player.vy &&
       player.x+player.width>p.x &&
       player.x<p.x+p.width
     ){
-      player.velocityY = player.jump;
-      if(!p.counted){
-        score++;
-        p.counted=true;
+      if(p.type==="break"){
+        p.y=canvas.height+100;
+      }else{
+        player.vy=player.jump;
+        if(!p.counted){ score++; p.counted=true; }
       }
     }
   });
 
   monsters.forEach(m=>{
+    m.x+=m.dir*1.2;
+    if(m.x<0||m.x+m.width>canvas.width) m.dir*=-1;
+
     if(
-      player.x < m.x+m.width &&
-      player.x+player.width > m.x &&
-      player.y < m.y+m.height &&
-      player.y+player.height > m.y
+      player.x<m.x+m.width &&
+      player.x+player.width>m.x &&
+      player.y<m.y+m.height &&
+      player.y+player.height>m.y
     ){
-      gameOver();
+      startGame();
     }
   });
 
-  if(player.y < canvas.height/2){
-    const dy = -player.velocityY;
+  if(player.y<canvas.height/2){
+    const dy=-player.vy;
     platforms.forEach(p=>p.y+=dy);
     monsters.forEach(m=>m.y+=dy);
-    player.y = canvas.height/2;
+    player.y=canvas.height/2;
 
     platforms.forEach(p=>{
       if(p.y>canvas.height){
-        const top = Math.min(...platforms.map(x=>x.y));
-        p.y = top-90;
-        p.x = Math.random()*(canvas.width-p.width);
-        p.counted=false;
-
-        if(score>=monsterUnlock && Math.random()<0.3){
+        const top=Math.min(...platforms.map(x=>x.y));
+        Object.assign(p,createPlatform(top-90));
+        if(score>5 && Math.random()<0.25){
           monsters.push({
             x:p.x+20,
             y:p.y-40,
             width:40,
-            height:40
+            height:40,
+            dir:Math.random()<0.5?-1:1
           });
         }
       }
     });
   }
-
-  if(player.y>canvas.height) gameOver();
 }
 
-/* ---------- LEADERBOARD ---------- */
-function updateLeaderboard(){
-  const existing = leaderboard.find(p=>p.name===playerName);
-  if(existing){
-    if(score>existing.score) existing.score=score;
-  }else{
-    leaderboard.push({name:playerName,score});
-  }
-
-  leaderboard.sort((a,b)=>b.score-a.score);
-  localStorage.setItem("leaderboard",JSON.stringify(leaderboard));
-
-  document.getElementById("leaderboard").innerHTML =
-    "<b>🏆 ТОП-5</b><br>" +
-    leaderboard.slice(0,5).map((p,i)=>`${i+1}. ${p.name}: ${p.score}`).join("<br>");
-}
-
-/* ---------- GAME OVER ---------- */
-function gameOver(){
-  updateLeaderboard();
-  alert("Game Over!");
-  location.reload();
-}
-
-/* ---------- LOOP ---------- */
-function loop(){
+/* ---------- DRAW ---------- */
+function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle=playerColor;
+  ctx.fillRect(player.x,player.y,player.width,player.height);
+
+  platforms.forEach(p=>{
+    ctx.fillStyle=p.type==="moving"?"blue":p.type==="break"?"brown":"black";
+    ctx.fillRect(p.x,p.y,p.width,p.height);
+  });
+
+  ctx.fillStyle="purple";
+  monsters.forEach(m=>ctx.fillRect(m.x,m.y,m.width,m.height));
+
+  ctx.fillStyle="black";
+  ctx.fillText(`${playerName}: ${score}`,10,30);
+}
+
+function loop(){
   update();
-  drawPlayer();
-  drawPlatforms();
-  drawMonsters();
-  drawScore();
+  draw();
   requestAnimationFrame(loop);
 }
 loop();
 
 /* ---------- CONTROLS ---------- */
-document.addEventListener("touchstart",e=>{
-  player.speedX = e.touches[0].clientX < canvas.width/2 ? -4 : 4;
-});
-document.addEventListener("touchend",()=>player.speedX=0);
-
-document.addEventListener("keydown",e=>{
+addEventListener("touchstart",e=>{
+  e.preventDefault();
+  player.speedX=e.touches[0].clientX<canvas.width/2?-4:4;
+},{passive:false});
+addEventListener("touchend",()=>player.speedX=0);
+addEventListener("keydown",e=>{
   if(e.key==="ArrowLeft") player.speedX=-4;
   if(e.key==="ArrowRight") player.speedX=4;
 });
-document.addEventListener("keyup",()=>player.speedX=0);
+addEventListener("keyup",()=>player.speedX=0);
 </script>
 
 </body>
