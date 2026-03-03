@@ -39,13 +39,24 @@ let score = 0;
 
 function createPlatforms(){
   platforms = [];
-  let gap = 90;
-  let count = Math.ceil(canvas.height / gap);
 
-  for(let i = 0; i < count; i++){
+  const gap = 90;
+
+  // 🔹 Первая платформа — ПОД игроком
+  platforms.push({
+    x: player.x,
+    y: player.y + player.height + 10,
+    width: 80,
+    height: 12,
+    counted: true
+  });
+
+  const count = Math.ceil(canvas.height / gap);
+
+  for(let i = 1; i < count; i++){
     platforms.push({
       x: Math.random() * (canvas.width - 80),
-      y: canvas.height - i * gap,
+      y: platforms[i - 1].y - gap,
       width: 80,
       height: 12,
       counted: false
