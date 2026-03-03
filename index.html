@@ -23,7 +23,7 @@ let gravity = 0.4;
 
 let player = {
   x: canvas.width / 2 - 20,
-  y: canvas.height - 150,
+  y: canvas.height - 200,
   width: 40,
   height: 40,
   velocityY: -15,
@@ -38,12 +38,12 @@ function createPlatforms(){
 
   // первая платформа под игроком
   platforms.push({
-    x: player.x,
-    y: player.y + 60,
-    width: 60,
-    height: 10,
-    counted: false
-  });
+  x: player.x - 10,
+  y: player.y + player.height + 5,
+  width: 80,
+  height: 12,
+  counted: false
+});
 
   for(let i=1;i<10;i++){
     platforms.push({
