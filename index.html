@@ -36,21 +36,24 @@ let score = 0;
 function createPlatforms(){
   platforms = [];
 
+  let gap = 90; // расстояние между платформами
+
   // первая платформа под игроком
   platforms.push({
-  x: player.x - 10,
-  y: player.y + player.height + 5,
-  width: 80,
-  height: 12,
-  counted: false
-});
+    x: player.x - 20,
+    y: player.y + player.height + 5,
+    width: 80,
+    height: 12,
+    counted: false
+  });
 
+  // остальные платформы строятся ВВЕРХ от игрока
   for(let i=1;i<10;i++){
     platforms.push({
-      x: Math.random() * (canvas.width - 60),
-      y: i * 90,
-      width: 60,
-      height: 10,
+      x: Math.random() * (canvas.width - 80),
+      y: player.y - (i * gap),
+      width: 70,
+      height: 12,
       counted: false
     });
   }
