@@ -90,7 +90,10 @@ function update(){
   player.x < p.x + p.width &&
   player.velocityY > 0
 ){
-      player.velocityY = player.jump;score++;
+      player.velocityY = player.jump;if(!p.counted){
+  score++;
+  p.counted = true;
+}
     }
   });
 
