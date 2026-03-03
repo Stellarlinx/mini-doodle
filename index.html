@@ -12,18 +12,41 @@ html, body {
   overflow: hidden;
   background: #87CEEB;
   touch-action: none;
+  font-family: Arial;
 }
 canvas {
   display: block;
   background: white;
 }
+#leaderboard {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+  background: rgba(255,255,255,0.9);
+  padding: 8px;
+  border-radius: 8px;
+  font-size: 14px;
+}
 </style>
 </head>
 
 <body>
+
 <canvas id="game"></canvas>
+<div id="leaderboard"></div>
 
 <script>
+/* ---------- ИМЯ И ЛИДЕРБОРД ---------- */
+let playerName = localStorage.getItem("playerName");
+if(!playerName){
+  playerName = prompt("Введите имя:");
+  if(!playerName) playerName = "Player";
+  localStorage.setItem("playerName", playerName);
+}
+
+let leaderboard = JSON.parse(localStorage.getItem("leaderboard")) || [];
+
+/* ---------- CANVAS ---------- */
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
@@ -34,7 +57,7 @@ function resize(){
 resize();
 window.addEventListener("resize", resize);
 
-/* ---------- ИГРОВЫЕ ПЕРЕМЕННЫЕ ---------- */
+/* ---------- ПЕРЕМЕННЫЕ ---------- */
 let gravity = 0.4;
 let score = 0;
 let gameStarted = false;
@@ -52,16 +75,17 @@ let player = {
 
 let platforms = [];
 let springs = [];
+let monsters = [];
 
-/* ---------- СОЗДАНИЕ ПЛАТФОРМ ---------- */
+/* ---------- ПЛАТФОРМЫ ---------- */
 function createPlatforms(){
   platforms = [];
   springs = [];
+  monsters = [];
   score = 0;
 
   const gap = 90;
 
-  // ⭐ стартовая платформа под игроком
   platforms.push({
     x: player.x,
     y: player.y + player.height + 10,
@@ -79,7 +103,7 @@ function createPlatforms(){
     if(rand < 0.15) type = "moving";
     if(rand > 0.85) type = "break";
 
-    platforms.push({
+    let p = {
       x: Math.random() * (canvas.width - 80),
       y: platforms[i - 1].y - gap,
       width: 80,
@@ -87,15 +111,26 @@ function createPlatforms(){
       type,
       dir: Math.random() < 0.5 ? -1 : 1,
       counted: false
-    });
+    };
 
-    // пружина
+    platforms.push(p);
+
     if(Math.random() < 0.1){
       springs.push({
-        x: platforms[i].x + 30,
-        y: platforms[i].y - 12,
+        x: p.x + 30,
+        y: p.y - 12,
         width: 20,
         height: 12
+      });
+    }
+
+    if(Math.random() < 0.08){
+      monsters.push({
+        x: p.x + 20,
+        y: p.y - 40,
+        width: 40,
+        height: 40,
+        dir: Math.random() < 0.5 ? -1 : 1
       });
     }
   }
@@ -112,9 +147,9 @@ function drawPlayer(){
 
 function drawPlatforms(){
   platforms.forEach(p=>{
-    if(p.type === "normal") ctx.fillStyle = "black";
-    if(p.type === "moving") ctx.fillStyle = "blue";
-    if(p.type === "break") ctx.fillStyle = "brown";
+    ctx.fillStyle =
+      p.type === "normal" ? "black" :
+      p.type === "moving" ? "blue" : "brown";
     ctx.fillRect(p.x, p.y, p.width, p.height);
   });
 }
@@ -126,10 +161,27 @@ function drawSprings(){
   });
 }
 
+function drawMonsters(){
+  ctx.fillStyle = "purple";
+  monsters.forEach(m=>{
+    ctx.fillRect(m.x, m.y, m.width, m.height);
+  });
+}
+
 function drawScore(){
   ctx.fillStyle = "black";
   ctx.font = "20px Arial";
-  ctx.fillText("Score: " + score, 10, 30);
+  ctx.fillText(`${playerName}: ${score}`, 10, 30);
+}
+
+function updateLeaderboardUI(){
+  leaderboard.sort((a,b)=>b.score - a.score);
+  leaderboard = leaderboard.slice(0,5);
+  localStorage.setItem("leaderboard", JSON.stringify(leaderboard));
+
+  const div = document.getElementById("leaderboard");
+  div.innerHTML = "<b>🏆 ТОП-5</b><br>" +
+    leaderboard.map((p,i)=>`${i+1}. ${p.name}: ${p.score}`).join("<br>");
 }
 
 /* ---------- ОБНОВЛЕНИЕ ---------- */
@@ -140,11 +192,9 @@ function update(){
   player.y += player.velocityY;
   player.x += player.speedX;
 
-  // границы экрана
   if(player.x < -player.width) player.x = canvas.width;
   if(player.x > canvas.width) player.x = -player.width;
 
-  // движение платформ
   platforms.forEach(p=>{
     if(p.type === "moving"){
       p.x += p.dir * 1.2;
@@ -152,7 +202,11 @@ function update(){
     }
   });
 
-  // столкновение с платформами
+  monsters.forEach(m=>{
+    m.x += m.dir * 1;
+    if(m.x < 0 || m.x + m.width > canvas.width) m.dir *= -1;
+  });
+
   platforms.forEach(p=>{
     if(
       player.velocityY > 0 &&
@@ -173,7 +227,6 @@ function update(){
     }
   });
 
-  // столкновение с пружинами
   springs.forEach(s=>{
     if(
       player.velocityY > 0 &&
@@ -185,28 +238,35 @@ function update(){
     }
   });
 
-  // прокрутка мира
+  monsters.forEach(m=>{
+    if(
+      player.x < m.x + m.width &&
+      player.x + player.width > m.x &&
+      player.y < m.y + m.height &&
+      player.y + player.height > m.y
+    ){
+      gameOver();
+    }
+  });
+
   if(player.y < canvas.height / 2){
     let dy = -player.velocityY;
-    platforms.forEach(p=> p.y += dy);
-    springs.forEach(s=> s.y += dy);
+    platforms.forEach(p=>p.y += dy);
+    springs.forEach(s=>s.y += dy);
+    monsters.forEach(m=>m.y += dy);
     player.y = canvas.height / 2;
-
-    platforms.forEach(p=>{
-      if(p.y > canvas.height){
-        let highest = Math.min(...platforms.map(pl => pl.y));
-        p.y = highest - 90;
-        p.x = Math.random() * (canvas.width - 80);
-        p.counted = false;
-      }
-    });
   }
 
-  // game over
   if(player.y > canvas.height){
-    alert("Game Over! Score: " + score);
-    location.reload();
+    gameOver();
   }
+}
+
+function gameOver(){
+  leaderboard.push({ name: playerName, score });
+  updateLeaderboardUI();
+  alert(`Game Over!\n${playerName}: ${score}`);
+  location.reload();
 }
 
 /* ---------- ЦИКЛ ---------- */
@@ -216,6 +276,7 @@ function loop(){
   drawPlayer();
   drawPlatforms();
   drawSprings();
+  drawMonsters();
   drawScore();
   requestAnimationFrame(loop);
 }
@@ -227,20 +288,16 @@ document.addEventListener("touchstart", e=>{
   player.speedX = x < canvas.width / 2 ? -4 : 4;
 }, { passive:false });
 
-document.addEventListener("touchend", ()=>{
-  player.speedX = 0;
-});
+document.addEventListener("touchend", ()=>player.speedX = 0);
 
 document.addEventListener("keydown", e=>{
   if(e.key === "ArrowLeft") player.speedX = -4;
   if(e.key === "ArrowRight") player.speedX = 4;
 });
-
-document.addEventListener("keyup", ()=>{
-  player.speedX = 0;
-});
+document.addEventListener("keyup", ()=>player.speedX = 0);
 
 /* ---------- СТАРТ ---------- */
+updateLeaderboardUI();
 createPlatforms();
 loop();
 </script>
