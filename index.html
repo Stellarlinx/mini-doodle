@@ -10,19 +10,17 @@ html, body {
   margin: 0;
   padding: 0;
   overflow: hidden;
-  font-family: Arial;
   background: #87CEEB;
+  font-family: Arial;
 }
 
 canvas {
   display: block;
   background: white;
   touch-action: none;
-  pointer-events: none; /* выключен до старта */
 }
 
-/* ---------- MENU ---------- */
-#startScreen {
+#startScreen, #gameOverScreen {
   position: fixed;
   inset: 0;
   background: rgba(135,206,235,0.95);
@@ -32,7 +30,7 @@ canvas {
   z-index: 10;
 }
 
-#menu {
+.menu {
   background: white;
   padding: 20px;
   border-radius: 12px;
@@ -40,7 +38,7 @@ canvas {
   text-align: center;
 }
 
-#menu input {
+input {
   width: 100%;
   padding: 8px;
   margin-bottom: 10px;
@@ -68,30 +66,47 @@ button {
   width: 100%;
   padding: 10px;
   font-size: 16px;
+  margin-top: 6px;
+}
+
+#leaderboard {
+  position: fixed;
+  top: 8px;
+  right: 8px;
+  background: rgba(255,255,255,0.9);
+  padding: 6px 8px;
+  border-radius: 6px;
+  font-size: 12px;
 }
 </style>
 </head>
 
 <body>
 
-<!-- MENU -->
 <div id="startScreen">
-  <div id="menu">
+  <div class="menu">
     <h3>Doodle Jump</h3>
-    <input id="nameInput" placeholder="Введите имя">
-
+    <input id="nameInput" placeholder="Имя">
     <div class="skins">
       <div class="skin selected" data-color="green" style="background:green"></div>
       <div class="skin" data-color="blue" style="background:blue"></div>
       <div class="skin" data-color="red" style="background:red"></div>
       <div class="skin" data-color="purple" style="background:purple"></div>
     </div>
-
     <button id="playBtn">PLAY</button>
   </div>
 </div>
 
+<div id="gameOverScreen" style="display:none">
+  <div class="menu">
+    <h3>Game Over</h3>
+    <p id="finalScore"></p>
+    <button onclick="goHome()">Home</button>
+  </div>
+</div>
+
 <canvas id="game"></canvas>
+<div id="leaderboard"></div>
 
 <script>
 /* ---------- CANVAS ---------- */
@@ -105,122 +120,259 @@ function resize() {
 resize();
 addEventListener("resize", resize);
 
-/* ---------- UI ---------- */
-const startScreen = document.getElementById("startScreen");
-const nameInput = document.getElementById("nameInput");
-const playBtn = document.getElementById("playBtn");
-
-/* ---------- PLAYER DATA ---------- */
-let playerName = "";
-let playerColor = "green";
-
-/* ---------- SKINS ---------- */
-document.querySelectorAll(".skin").forEach(skin => {
-  skin.onclick = () => {
-    document.querySelectorAll(".skin").forEach(s => s.classList.remove("selected"));
-    skin.classList.add("selected");
-    playerColor = skin.dataset.color;
-  };
-});
-
-/* ---------- GAME STATE ---------- */
+/* ---------- DATA ---------- */
+let playerName = localStorage.getItem("name") || "";
+let playerColor = localStorage.getItem("color") || "green";
+let score = 0;
 let gameStarted = false;
 let gravity = 0.4;
+let monsterUnlock = 5 + Math.floor(Math.random()*6);
+
+let leaderboard = JSON.parse(localStorage.getItem("leaderboard")) || [];
 
 /* ---------- PLAYER ---------- */
 const player = {
-  x: 0,
-  y: 0,
-  w: 40,
-  h: 40,
-  vy: 0,
+  x: 0, y: 0,
+  w: 40, h: 40,
+  vx: 0, vy: 0,
   jump: -15
 };
 
 let platforms = [];
+let monsters = [];
 
-/* ---------- PLAY ---------- */
-playBtn.onclick = () => {
+/* ---------- UI ---------- */
+const startScreen = document.getElementById("startScreen");
+const gameOverScreen = document.getElementById("gameOverScreen");
+const nameInput = document.getElementById("nameInput");
+const playBtn = document.getElementById("playBtn");
+
+nameInput.value = playerName;
+
+/* ---------- SKINS ---------- */
+document.querySelectorAll(".skin").forEach(s=>{
+  if(s.dataset.color === playerColor) s.classList.add("selected");
+  s.onclick = ()=>{
+    document.querySelectorAll(".skin").forEach(x=>x.classList.remove("selected"));
+    s.classList.add("selected");
+    playerColor = s.dataset.color;
+    localStorage.setItem("color", playerColor);
+  };
+});
+
+/* ---------- START ---------- */
+playBtn.onclick = ()=>{
   playerName = nameInput.value || "Player";
+  localStorage.setItem("name", playerName);
   startScreen.style.display = "none";
-  canvas.style.pointerEvents = "auto";
   startGame();
 };
 
-/* ---------- START GAME ---------- */
-function startGame() {
+/* ---------- GAME INIT ---------- */
+function startGame(){
   gameStarted = true;
+  score = 0;
   platforms = [];
+  monsters = [];
+  monsterUnlock = 5 + Math.floor(Math.random()*6);
 
-  player.x = canvas.width / 2 - player.w / 2;
-  player.y = canvas.height - 300;
+  player.x = canvas.width/2 - 20;
+  player.y = canvas.height - 200;
   player.vy = player.jump;
 
-  // 🔥 стартовая платформа (ГАРАНТИЯ)
-  platforms.push({
-    x: player.x - 30,
-    y: player.y + 60,
-    w: 120,
-    h: 12
-  });
+  // стартовая платформа
+  platforms.push(makePlatform(player.x-30, player.y+60, "normal"));
 
-  // 🔥 остальные платформы вверх
-  for (let i = 1; i < 10; i++) {
-    platforms.push({
-      x: Math.random() * (canvas.width - 80),
-      y: platforms[i - 1].y - 90,
-      w: 80,
-      h: 12
-    });
+  for(let i=1;i<12;i++){
+    spawnPlatform(platforms[i-1].y - 90);
   }
+}
+
+/* ---------- PLATFORM FACTORY ---------- */
+function makePlatform(x,y,type){
+  return {
+    x,y,
+    w: type==="normal"?100:80,
+    h:12,
+    type,
+    vx: type==="move" ? (Math.random()<0.5?-1:1)*1.2 : 0,
+    broken:false,
+    counted:false
+  };
+}
+
+function spawnPlatform(y){
+  let r = Math.random();
+  let type = "normal";
+  if(r<0.15) type="move";
+  else if(r<0.25) type="break";
+
+  platforms.push(
+    makePlatform(
+      Math.random()*(canvas.width-100),
+      y,
+      type
+    )
+  );
 }
 
 /* ---------- UPDATE ---------- */
-function update() {
-  if (!gameStarted) return;
+function update(){
+  if(!gameStarted) return;
 
   player.vy += gravity;
+  player.x += player.vx;
   player.y += player.vy;
 
-  platforms.forEach(p => {
-    if (
-      player.vy > 0 &&
-      player.y + player.h >= p.y &&
-      player.y + player.h <= p.y + p.h + player.vy &&
-      player.x + player.w > p.x &&
-      player.x < p.x + p.w
-    ) {
-      player.vy = player.jump;
+  if(player.x<-player.w) player.x=canvas.width;
+  if(player.x>canvas.width) player.x=-player.w;
+
+  platforms.forEach(p=>{
+    if(p.type==="move"){
+      p.x+=p.vx;
+      if(p.x<0||p.x+p.w>canvas.width) p.vx*=-1;
+    }
+
+    if(
+      !p.broken &&
+      player.vy>0 &&
+      player.y+player.h>=p.y &&
+      player.y+player.h<=p.y+p.h+player.vy &&
+      player.x+player.w>p.x &&
+      player.x<p.x+p.w
+    ){
+      if(p.type==="break"){
+        p.broken=true;
+      } else {
+        player.vy=player.jump;
+        if(!p.counted){
+          score++;
+          p.counted=true;
+        }
+      }
     }
   });
 
-  if (player.y > canvas.height) {
-    gameStarted = false;
-    canvas.style.pointerEvents = "none";
-    startScreen.style.display = "flex";
+  monsters.forEach(m=>{
+    m.x+=m.vx;
+    if(m.x<0||m.x+m.w>canvas.width) m.vx*=-1;
+
+    if(
+      player.x<m.x+m.w &&
+      player.x+player.w>m.x &&
+      player.y<m.y+m.h &&
+      player.y+player.h>m.y
+    ){
+      gameOver();
+    }
+  });
+
+  if(player.y<canvas.height/2){
+    const dy=-player.vy;
+    player.y=canvas.height/2;
+    platforms.forEach(p=>p.y+=dy);
+    monsters.forEach(m=>m.y+=dy);
+
+    platforms.forEach(p=>{
+      if(p.y>canvas.height){
+        const top=Math.min(...platforms.map(x=>x.y));
+        p.y=top-90;
+        p.x=Math.random()*(canvas.width-p.w);
+        p.broken=false;
+        p.counted=false;
+
+        if(score>=monsterUnlock && Math.random()<0.25){
+          monsters.push({
+            x:p.x,
+            y:p.y-40,
+            w:40,h:40,
+            vx:(Math.random()<0.5?-1:1)*1.5
+          });
+        }
+      }
+    });
   }
+
+  if(player.y>canvas.height) gameOver();
 }
 
 /* ---------- DRAW ---------- */
-function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+function draw(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  ctx.fillStyle = playerColor;
-  ctx.fillRect(player.x, player.y, player.w, player.h);
+  ctx.fillStyle=playerColor;
+  ctx.fillRect(player.x,player.y,player.w,player.h);
 
-  ctx.fillStyle = "black";
-  platforms.forEach(p => {
-    ctx.fillRect(p.x, p.y, p.w, p.h);
+  platforms.forEach(p=>{
+    if(p.broken) return;
+    ctx.fillStyle=p.type==="break"?"brown":"black";
+    ctx.fillRect(p.x,p.y,p.w,p.h);
   });
+
+  ctx.fillStyle="purple";
+  monsters.forEach(m=>ctx.fillRect(m.x,m.y,m.w,m.h));
+
+  ctx.fillStyle="black";
+  ctx.font="18px Arial";
+  ctx.fillText(`${playerName}: ${score}`,10,26);
 }
 
 /* ---------- LOOP ---------- */
-function loop() {
+function loop(){
   update();
   draw();
+  updateLeaderboardUI();
   requestAnimationFrame(loop);
 }
 loop();
+
+/* ---------- LEADERBOARD ---------- */
+function updateLeaderboardUI(){
+  const el=document.getElementById("leaderboard");
+  el.innerHTML="<b>TOP 5</b><br>"+leaderboard.slice(0,5)
+    .map((p,i)=>`${i+1}. ${p.name}: ${p.score}`).join("<br>");
+}
+
+function saveScore(){
+  const e=leaderboard.find(p=>p.name===playerName);
+  if(e){ if(score>e.score) e.score=score; }
+  else leaderboard.push({name:playerName,score});
+  leaderboard.sort((a,b)=>b.score-a.score);
+  localStorage.setItem("leaderboard",JSON.stringify(leaderboard));
+}
+
+/* ---------- GAME OVER ---------- */
+function gameOver(){
+  saveScore();
+  gameStarted=false;
+  document.getElementById("finalScore").innerText=`Score: ${score}`;
+  gameOverScreen.style.display="flex";
+}
+
+function goHome(){
+  gameOverScreen.style.display="none";
+  startScreen.style.display="flex";
+}
+
+/* ---------- CONTROLS ---------- */
+addEventListener("keydown",e=>{
+  if(!gameStarted) return;
+  if(e.key==="ArrowLeft") player.vx=-4;
+  if(e.key==="ArrowRight") player.vx=4;
+});
+addEventListener("keyup",()=>player.vx=0);
+
+canvas.addEventListener("touchstart",e=>{
+  if(!gameStarted) return;
+  e.preventDefault();
+  player.vx=e.touches[0].clientX<canvas.width/2?-4:4;
+},{passive:false});
+
+canvas.addEventListener("touchend",e=>{
+  if(!gameStarted) return;
+  e.preventDefault();
+  player.vx=0;
+},{passive:false});
 </script>
 
 </body>
