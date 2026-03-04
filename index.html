@@ -55,7 +55,6 @@ input {
   height: 40px;
   border-radius: 6px;
   border: 2px solid transparent;
-  cursor: pointer;
 }
 
 .skin.selected {
@@ -83,7 +82,6 @@ button {
 
 <body>
 
-<!-- START -->
 <div id="startScreen">
   <div class="menu">
     <h3>Doodle Jump</h3>
@@ -98,13 +96,12 @@ button {
   </div>
 </div>
 
-<!-- GAME OVER -->
 <div id="gameOverScreen" style="display:none">
   <div class="menu">
     <h3>Game Over</h3>
     <p id="finalScore"></p>
-    <button onclick="restartGame()">🔁 Restart</button>
-    <button onclick="goHome()">🏠 Home</button>
+    <button onclick="restartGame()">Restart</button>
+    <button onclick="goHome()">Home</button>
   </div>
 </div>
 
@@ -116,29 +113,37 @@ button {
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
-function resize() {
+function resize(){
   canvas.width = innerWidth;
   canvas.height = innerHeight;
 }
 resize();
 addEventListener("resize", resize);
 
+/* ---------- DEVICE SCALE ---------- */
+const IS_DESKTOP = canvas.width > 700;
+const SCALE = IS_DESKTOP ? 1.3 : 1;
+
+/* ---------- GAME CONFIG ---------- */
+const PLAYER_SIZE = 40 * SCALE;
+const PLATFORM_WIDTH = 100 * SCALE;
+const PLATFORM_GAP = 90 * SCALE;
+const GRAVITY = 0.4 * SCALE;
+const JUMP_FORCE = -15 * SCALE;
+
 /* ---------- DATA ---------- */
 let playerName = localStorage.getItem("name") || "";
 let playerColor = localStorage.getItem("color") || "green";
+let leaderboard = JSON.parse(localStorage.getItem("leaderboard")) || [];
 let score = 0;
 let gameStarted = false;
-let gravity = 0.4;
 let lastPlatformWasBreak = false;
-
-let leaderboard = JSON.parse(localStorage.getItem("leaderboard")) || [];
 
 /* ---------- PLAYER ---------- */
 const player = {
   x: 0, y: 0,
-  w: 40, h: 40,
-  vx: 0, vy: 0,
-  jump: -15
+  w: PLAYER_SIZE, h: PLAYER_SIZE,
+  vx: 0, vy: 0
 };
 
 let platforms = [];
@@ -148,7 +153,6 @@ let monsters = [];
 const startScreen = document.getElementById("startScreen");
 const gameOverScreen = document.getElementById("gameOverScreen");
 const nameInput = document.getElementById("nameInput");
-
 nameInput.value = playerName;
 
 /* ---------- SKINS ---------- */
@@ -170,70 +174,53 @@ document.getElementById("playBtn").onclick = ()=>{
   startGame();
 };
 
-/* ---------- GAME INIT ---------- */
-function startGame(){
-  gameStarted = true;
-  score = 0;
-  platforms = [];
-  monsters = [];
-  lastPlatformWasBreak = false;
-
-  player.x = canvas.width/2 - 20;
-  player.y = canvas.height - 200;
-  player.vx = 0;
-  player.vy = player.jump;
-
-  platforms.push(makePlatform(player.x-30, player.y+60, "normal"));
-
-  for(let i=1;i<12;i++){
-    spawnPlatform(platforms[i-1].y - 90);
-  }
-}
-
-/* ---------- PLATFORM FACTORY ---------- */
+/* ---------- INIT ---------- */
 function makePlatform(x,y,type){
   return {
     x,y,
-    w: type==="normal"?100:80,
-    h:12,
+    w: PLATFORM_WIDTH,
+    h: 12 * SCALE,
     type,
-    vx: type==="move" ? (Math.random()<0.5?-1:1)*1.3 : 0,
+    vx: type==="move" ? (Math.random()<0.5?-1:1)*1.3*SCALE : 0,
     broken:false,
     counted:false
   };
 }
 
 function spawnPlatform(y){
-  let r = Math.random();
-  let type = "normal";
+  let r=Math.random(), type="normal";
+  if(!lastPlatformWasBreak && r<0.15){ type="break"; lastPlatformWasBreak=true; }
+  else if(r<0.3){ type="move"; lastPlatformWasBreak=false; }
+  else lastPlatformWasBreak=false;
 
-  if(!lastPlatformWasBreak && r<0.15){
-    type="break";
-    lastPlatformWasBreak=true;
-  }
-  else if(r<0.3){
-    type="move";
-    lastPlatformWasBreak=false;
-  }
-  else {
-    lastPlatformWasBreak=false;
-  }
-
-  platforms.push(makePlatform(Math.random()*(canvas.width-100), y, type));
+  platforms.push(makePlatform(Math.random()*(canvas.width-PLATFORM_WIDTH),y,type));
 }
 
-/* ---------- MONSTER SPAWN ---------- */
-function trySpawnMonster(p){
-  if(score < 6) return;
-  if(monsters.length >= 2) return;
-  if(Math.random() > 0.25) return;
+function startGame(){
+  gameStarted=true;
+  score=0;
+  platforms=[];
+  monsters=[];
+  lastPlatformWasBreak=false;
 
+  player.x=canvas.width/2-player.w/2;
+  player.y=canvas.height-200;
+  player.vx=0;
+  player.vy=JUMP_FORCE;
+
+  platforms.push(makePlatform(player.x-20,player.y+60,"normal"));
+  for(let i=1;i<12;i++) spawnPlatform(platforms[i-1].y-PLATFORM_GAP);
+}
+
+/* ---------- MONSTERS ---------- */
+function trySpawnMonster(p){
+  if(score<6 || monsters.length>=2 || Math.random()>0.25) return;
   monsters.push({
-    x: p.x,
-    y: p.y - 40,
-    w: 40,
-    h: 40,
-    vx: (Math.random()<0.5?-1:1)*1.5
+    x:p.x,
+    y:p.y-40*SCALE,
+    w:40*SCALE,
+    h:40*SCALE,
+    vx:(Math.random()<0.5?-1:1)*1.5*SCALE
   });
 }
 
@@ -241,9 +228,9 @@ function trySpawnMonster(p){
 function update(){
   if(!gameStarted) return;
 
-  player.vy += gravity;
-  player.x += player.vx;
-  player.y += player.vy;
+  player.vy+=GRAVITY;
+  player.x+=player.vx;
+  player.y+=player.vy;
 
   if(player.x<-player.w) player.x=canvas.width;
   if(player.x>canvas.width) player.x=-player.w;
@@ -254,22 +241,16 @@ function update(){
       if(p.x<0||p.x+p.w>canvas.width) p.vx*=-1;
     }
 
-    if(
-      !p.broken &&
-      player.vy>0 &&
+    if(!p.broken && player.vy>0 &&
       player.y+player.h>=p.y &&
       player.y+player.h<=p.y+p.h+player.vy &&
       player.x+player.w>p.x &&
       player.x<p.x+p.w
     ){
-      if(p.type==="break"){
-        p.broken=true;
-      } else {
-        player.vy=player.jump;
-        if(!p.counted){
-          score++;
-          p.counted=true;
-        }
+      if(p.type==="break") p.broken=true;
+      else{
+        player.vy=JUMP_FORCE;
+        if(!p.counted){ score++; p.counted=true; }
       }
     }
   });
@@ -277,19 +258,12 @@ function update(){
   monsters.forEach(m=>{
     m.x+=m.vx;
     if(m.x<0||m.x+m.w>canvas.width) m.vx*=-1;
-
-    if(
-      player.x<m.x+m.w &&
-      player.x+player.w>m.x &&
-      player.y<m.y+m.h &&
-      player.y+player.h>m.y
-    ){
+    if(player.x<m.x+m.w&&player.x+player.w>m.x&&player.y<m.y+m.h&&player.y+player.h>m.y)
       gameOver();
-    }
   });
 
   if(player.y<canvas.height/2){
-    const dy=-player.vy;
+    let dy=-player.vy;
     player.y=canvas.height/2;
     platforms.forEach(p=>p.y+=dy);
     monsters.forEach(m=>m.y+=dy);
@@ -297,11 +271,10 @@ function update(){
     platforms.forEach(p=>{
       if(p.y>canvas.height){
         const top=Math.min(...platforms.map(x=>x.y));
-        p.y=top-90;
+        p.y=top-PLATFORM_GAP;
         p.x=Math.random()*(canvas.width-p.w);
         p.broken=false;
         p.counted=false;
-
         trySpawnMonster(p);
       }
     });
@@ -319,9 +292,7 @@ function draw(){
 
   platforms.forEach(p=>{
     if(p.broken) return;
-    ctx.fillStyle =
-      p.type==="move" ? "blue" :
-      p.type==="break" ? "brown" : "black";
+    ctx.fillStyle=p.type==="move"?"blue":p.type==="break"?"brown":"black";
     ctx.fillRect(p.x,p.y,p.w,p.h);
   });
 
@@ -329,35 +300,29 @@ function draw(){
   monsters.forEach(m=>ctx.fillRect(m.x,m.y,m.w,m.h));
 
   ctx.fillStyle="black";
-  ctx.font="18px Arial";
-  ctx.fillText(`${playerName}: ${score}`,10,26);
+  ctx.font=`${18*SCALE}px Arial`;
+  ctx.fillText(`${playerName}: ${score}`,10,26*SCALE);
 }
 
 /* ---------- LOOP ---------- */
 function loop(){
   update();
   draw();
-  updateLeaderboard();
+  document.getElementById("leaderboard").innerHTML =
+    "<b>TOP 5</b><br>"+leaderboard.slice(0,5).map((p,i)=>`${i+1}. ${p.name}: ${p.score}`).join("<br>");
   requestAnimationFrame(loop);
 }
 loop();
 
-/* ---------- LEADERBOARD ---------- */
-function updateLeaderboard(){
-  document.getElementById("leaderboard").innerHTML =
-    "<b>TOP 5</b><br>" +
-    leaderboard.slice(0,5).map((p,i)=>`${i+1}. ${p.name}: ${p.score}`).join("<br>");
-}
-
+/* ---------- GAME OVER ---------- */
 function saveScore(){
-  const e=leaderboard.find(p=>p.name===playerName);
+  let e=leaderboard.find(p=>p.name===playerName);
   if(e){ if(score>e.score) e.score=score; }
   else leaderboard.push({name:playerName,score});
   leaderboard.sort((a,b)=>b.score-a.score);
   localStorage.setItem("leaderboard",JSON.stringify(leaderboard));
 }
 
-/* ---------- GAME OVER ---------- */
 function gameOver(){
   saveScore();
   gameStarted=false;
@@ -378,15 +343,15 @@ function goHome(){
 /* ---------- CONTROLS ---------- */
 addEventListener("keydown",e=>{
   if(!gameStarted) return;
-  if(e.key==="ArrowLeft") player.vx=-4;
-  if(e.key==="ArrowRight") player.vx=4;
+  if(e.key==="ArrowLeft") player.vx=-4*SCALE;
+  if(e.key==="ArrowRight") player.vx=4*SCALE;
 });
 addEventListener("keyup",()=>player.vx=0);
 
 canvas.addEventListener("touchstart",e=>{
   if(!gameStarted) return;
   e.preventDefault();
-  player.vx=e.touches[0].clientX<canvas.width/2?-4:4;
+  player.vx=e.touches[0].clientX<canvas.width/2?-4*SCALE:4*SCALE;
 },{passive:false});
 
 canvas.addEventListener("touchend",e=>{
