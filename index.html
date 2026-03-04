@@ -129,7 +129,6 @@ let playerColor = localStorage.getItem("color") || "green";
 let score = 0;
 let gameStarted = false;
 let gravity = 0.4;
-let monsterUnlock = 5 + Math.floor(Math.random()*6);
 let lastPlatformWasBreak = false;
 
 let leaderboard = JSON.parse(localStorage.getItem("leaderboard")) || [];
@@ -178,11 +177,10 @@ function startGame(){
   platforms = [];
   monsters = [];
   lastPlatformWasBreak = false;
-  monsterUnlock = 5 + Math.floor(Math.random()*6);
 
   player.x = canvas.width/2 - 20;
   player.y = canvas.height - 200;
-  player.vx = 0;          // 🔥 FIX
+  player.vx = 0;
   player.vy = player.jump;
 
   platforms.push(makePlatform(player.x-30, player.y+60, "normal"));
@@ -224,6 +222,21 @@ function spawnPlatform(y){
   platforms.push(makePlatform(Math.random()*(canvas.width-100), y, type));
 }
 
+/* ---------- MONSTER SPAWN ---------- */
+function trySpawnMonster(p){
+  if(score < 6) return;
+  if(monsters.length >= 2) return;
+  if(Math.random() > 0.25) return;
+
+  monsters.push({
+    x: p.x,
+    y: p.y - 40,
+    w: 40,
+    h: 40,
+    vx: (Math.random()<0.5?-1:1)*1.5
+  });
+}
+
 /* ---------- UPDATE ---------- */
 function update(){
   if(!gameStarted) return;
@@ -253,8 +266,25 @@ function update(){
         p.broken=true;
       } else {
         player.vy=player.jump;
-        if(!p.counted){ score++; p.counted=true; }
+        if(!p.counted){
+          score++;
+          p.counted=true;
+        }
       }
+    }
+  });
+
+  monsters.forEach(m=>{
+    m.x+=m.vx;
+    if(m.x<0||m.x+m.w>canvas.width) m.vx*=-1;
+
+    if(
+      player.x<m.x+m.w &&
+      player.x+player.w>m.x &&
+      player.y<m.y+m.h &&
+      player.y+player.h>m.y
+    ){
+      gameOver();
     }
   });
 
@@ -262,6 +292,7 @@ function update(){
     const dy=-player.vy;
     player.y=canvas.height/2;
     platforms.forEach(p=>p.y+=dy);
+    monsters.forEach(m=>m.y+=dy);
 
     platforms.forEach(p=>{
       if(p.y>canvas.height){
@@ -270,7 +301,8 @@ function update(){
         p.x=Math.random()*(canvas.width-p.w);
         p.broken=false;
         p.counted=false;
-        p.type=p.type;
+
+        trySpawnMonster(p);
       }
     });
   }
@@ -292,6 +324,9 @@ function draw(){
       p.type==="break" ? "brown" : "black";
     ctx.fillRect(p.x,p.y,p.w,p.h);
   });
+
+  ctx.fillStyle="purple";
+  monsters.forEach(m=>ctx.fillRect(m.x,m.y,m.w,m.h));
 
   ctx.fillStyle="black";
   ctx.font="18px Arial";
