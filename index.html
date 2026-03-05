@@ -10,20 +10,7 @@ html,body{
   margin:0;padding:0;overflow:hidden;
   background:#87CEEB;font-family:Arial;
 }
-  .skin img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  border-radius: 6px;
-  pointer-events: none;
-}
-canvas{
-  display:block;
-  touch-action:none;
-  position:absolute;
-  left:50%;
-  transform:translateX(-50%);
-}
+canvas{display:block;background:white;touch-action:none;}
 #startScreen,#gameOverScreen{
   position:fixed;inset:0;
   background:rgba(135,206,235,.95);
@@ -36,14 +23,9 @@ canvas{
 }
 input{width:100%;padding:8px;margin-bottom:10px;}
 .skins{display:flex;justify-content:space-between;margin-bottom:10px;}
-.skin{
-  width:40px;height:40px;border-radius:6px;
-  border:2px solid transparent;cursor:pointer;
-}
+.skin{width:40px;height:40px;border-radius:6px;border:2px solid transparent;cursor:pointer;}
 .skin.selected{border-color:black;}
-button{
-  width:100%;padding:10px;font-size:16px;margin-top:6px;
-}
+button{width:100%;padding:10px;font-size:16px;margin-top:6px;}
 #leaderboard{
   position:fixed;top:8px;right:8px;
   background:rgba(255,255,255,.9);
@@ -54,30 +36,20 @@ button{
 
 <body>
 
-<!-- START -->
 <div id="startScreen">
   <div class="menu">
     <h3>Doodle Jump</h3>
     <input id="nameInput" placeholder="Имя">
     <div class="skins">
-  <div class="skin selected" data-color="green">
-    <img src="img/player_green.png">
-  </div>
-  <div class="skin" data-color="blue">
-    <img src="img/player_blue.png">
-  </div>
-  <div class="skin" data-color="red">
-    <img src="img/player_red.png">
-  </div>
-  <div class="skin" data-color="purple">
-    <img src="img/player_purple.png">
-  </div>
-</div>
+      <div class="skin selected" data-color="green" style="background:green"></div>
+      <div class="skin" data-color="blue" style="background:blue"></div>
+      <div class="skin" data-color="red" style="background:red"></div>
+      <div class="skin" data-color="purple" style="background:purple"></div>
+    </div>
     <button id="playBtn">PLAY</button>
   </div>
 </div>
 
-<!-- GAME OVER -->
 <div id="gameOverScreen" style="display:none">
   <div class="menu">
     <h3>Game Over</h3>
@@ -91,383 +63,222 @@ button{
 <div id="leaderboard"></div>
 
 <script>
+/* ===== BASE ===== */
+const canvas=document.getElementById("game");
+const ctx=canvas.getContext("2d");
+function resize(){canvas.width=innerWidth;canvas.height=innerHeight;}
+resize();addEventListener("resize",resize);
+  
+const IS_MOBILE=innerWidth<768;
+const GAME_WIDTH=IS_MOBILE?canvas.width:canvas.width*0.55;
+const OFFSET_X=(canvas.width-GAME_WIDTH)/2;
 
-const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
-
-let GAME_WIDTH = 420;
-
-function resize(){
-if(innerWidth < 768) GAME_WIDTH = innerWidth;
-
-canvas.width = GAME_WIDTH;
-canvas.height = innerHeight;
-}
-
-resize();
-addEventListener("resize",resize);
-
-
-/* IMAGES */
-
-const bgImage = new Image();
-bgImage.src = "img/bg.png";
-
-const playerSkins = {
-green:new Image(),
-blue:new Image(),
-red:new Image(),
-purple:new Image()
-};
-
-playerSkins.green.src="img/player_green.png";
-playerSkins.blue.src="img/player_blue.png";
-playerSkins.red.src="img/player_red.png";
-playerSkins.purple.src="img/player_purple.png";
-
-const springImage=new Image();
-springImage.src="img/spring.png";
-
-const coinImage=new Image();
-coinImage.src="img/coin.png";
-
-const monsterImages=[
-"img/monster1.png",
-"img/monster2.png"
-].map(src=>{
-let i=new Image();
-i.src=src;
-return i;
-});
-
-
-/* DATA */
-
+/* ===== DATA ===== */
 let playerName=localStorage.getItem("name")||"";
 let playerColor=localStorage.getItem("color")||"green";
-let score=0;
-let gameStarted=false;
+let score=0,gameStarted=false;
+let leaderboard=JSON.parse(localStorage.getItem("leaderboard"))||[];
 
-
-/* PLAYER */
-
+/* ===== PLAYER ===== */
 const player={
-x:0,
-y:0,
-w:40,
-h:40,
-vx:0,
-vy:0
+  x:0,y:0,w:IS_MOBILE?40:46,h:IS_MOBILE?40:46,
+  vx:0,vy:0
 };
 
-const GRAVITY=0.4;
-const JUMP=-15;
-const SPEED=4;
+const GRAVITY = IS_MOBILE ? 0.4 : 0.36;
+const JUMP = IS_MOBILE ? -15 : -14;
+const SPEED_X = IS_MOBILE ? 4 : 3.1;
+/* ===== OBJECTS ===== */
+let platforms=[],monsters=[];
+let lastTime=performance.now();
 
-
-/* OBJECTS */
-
-let platforms=[];
-let springs=[];
-let coins=[];
-let monsters=[];
-
-
-/* UI */
-
+/* ===== UI ===== */
+const startScreen=document.getElementById("startScreen");
+const gameOverScreen=document.getElementById("gameOverScreen");
 document.getElementById("nameInput").value=playerName;
 
 document.querySelectorAll(".skin").forEach(s=>{
-
-if(s.dataset.color===playerColor)
-s.classList.add("selected");
-
-s.onclick=()=>{
-
-document.querySelectorAll(".skin")
-.forEach(x=>x.classList.remove("selected"));
-
-s.classList.add("selected");
-
-playerColor=s.dataset.color;
-
-localStorage.setItem("color",playerColor);
-
-};
-
+  if(s.dataset.color===playerColor)s.classList.add("selected");
+  s.onclick=()=>{
+    document.querySelectorAll(".skin").forEach(x=>x.classList.remove("selected"));
+    s.classList.add("selected");
+    playerColor=s.dataset.color;
+    localStorage.setItem("color",playerColor);
+  };
 });
-
 
 document.getElementById("playBtn").onclick=()=>{
-
-playerName=document.getElementById("nameInput").value||"Player";
-localStorage.setItem("name",playerName);
-
-document.getElementById("startScreen").style.display="none";
-
-startGame();
-
+  playerName=document.getElementById("nameInput").value||"Player";
+  localStorage.setItem("name",playerName);
+  startScreen.style.display="none";
+  startGame();
 };
 
-
-/* START */
-
+/* ===== INIT ===== */
 function startGame(){
+  gameStarted=true;score=0;
+  platforms=[];monsters=[];
+  player.x=OFFSET_X+GAME_WIDTH/2-player.w/2;
+  player.y=canvas.height-200;
+  player.vx=0;player.vy=JUMP;
 
-gameStarted=true;
-score=0;
-
-platforms=[];
-springs=[];
-coins=[];
-monsters=[];
-
-player.x=GAME_WIDTH/2-20;
-player.y=canvas.height-200;
-
-player.vx=0;
-player.vy=JUMP;
-
-platforms.push({
-x:player.x-40,
-y:player.y+60,
-w:100,
-h:12
-});
-
-for(let i=0;i<10;i++){
-
-spawnPlatform(canvas.height-i*90);
-
+  platforms.push(makePlatform(player.x-30,player.y+60,"normal"));
+  for(let i=1;i<12;i++)spawnPlatform(platforms[i-1].y-90);
 }
-
+  /* ===== PLATFORM ===== */
+function makePlatform(x,y,type){
+  return{x,y,w:type==="normal"?100:80,h:12,type,
+    vx:type==="move"?(Math.random()<.5?-1:1)*1.1:0,
+    broken:false,counted:false};
 }
-
-
-/* SPAWN PLATFORM */
-
 function spawnPlatform(y){
-
-let p={
-x:Math.random()*(GAME_WIDTH-100),
-y:y,
-w:100,
-h:12
-};
-
-platforms.push(p);
-
-/* SPRING */
-
-if(Math.random()<0.15){
-
-springs.push({
-x:p.x+p.w/2-10,
-y:p.y-20,
-w:20,
-h:20
-});
-
+  let r=Math.random(),type="normal";
+  if(r<.12)type="break"; else if(r<.28)type="move";
+  platforms.push(makePlatform(
+    OFFSET_X+Math.random()*(GAME_WIDTH-100),y,type
+  ));
 }
 
-/* COIN */
+/* ===== MONSTERS ===== */
+function trySpawnMonster(p){
+  if (score < 6) return;
 
-if(Math.random()<0.25){
+  // шанс появления
+  if (Math.random() > 0.35) return;
 
-coins.push({
-x:p.x+p.w/2-10,
-y:p.y-40,
-w:20,
-h:20,
-collected:false
-});
+  // чтобы не было кучей в одном месте
+  const minDist = 160;
+  for (let m of monsters) {
+    if (Math.abs(m.y - p.y) < minDist) return;
+  }
 
+  monsters.push({
+    x: p.x + p.w / 2 - 20,
+    y: p.y - 45,
+    w: 40,
+    h: 40,
+    vx: (Math.random() < 0.5 ? -1 : 1) * (IS_MOBILE ? 1.4 : 1.3)
+  });
 }
 
+/* ===== UPDATE ===== */
+function update(dt){
+  if(!gameStarted)return;
+
+  player.vy+=GRAVITY*dt;
+  player.x+=player.vx*dt;
+  player.y+=player.vy*dt;
+
+  if(player.x<OFFSET_X-player.w)player.x=OFFSET_X+GAME_WIDTH;
+  if(player.x>OFFSET_X+GAME_WIDTH)player.x=OFFSET_X-player.w;
+
+  platforms.forEach(p=>{
+    if(p.type==="move"){
+      p.x+=p.vx*dt;
+      if(p.x<OFFSET_X||p.x+p.w>OFFSET_X+GAME_WIDTH)p.vx*=-1;
+    }
+    if(!p.broken&&player.vy>0&&
+      player.y+player.h>=p.y&&
+      player.y+player.h<=p.y+p.h+player.vy&&
+      player.x+player.w>p.x&&player.x<p.x+p.w){
+      if(p.type==="break")p.broken=true;
+      else{player.vy=JUMP;if(!p.counted){score++;p.counted=true;}}
+    }
+  });
+
+  monsters.forEach(m=>{
+    m.x+=m.vx*dt;
+    if(m.x<OFFSET_X||m.x+m.w>OFFSET_X+GAME_WIDTH)m.vx*=-1;
+    if(player.x<m.x+m.w&&player.x+player.w>m.x&&
+       player.y<m.y+m.h&&player.y+player.h>m.y)gameOver();
+  });
+
+  if(player.y<canvas.height*.45){
+    const dy=-player.vy*dt;
+    player.y=canvas.height*.45;
+    platforms.forEach(p=>p.y+=dy);
+    monsters.forEach(m=>m.y+=dy);
+
+    platforms.forEach(p=>{
+      if(p.y>canvas.height){
+        const top=Math.min(...platforms.map(x=>x.y));
+        p.y=top-90;
+        p.x=OFFSET_X+Math.random()*(GAME_WIDTH-p.w);
+        p.broken=false;p.counted=false;
+        trySpawnMonster(p);
+      }
+    });
+  }
+
+  if(player.y>canvas.height)gameOver();
 }
 
-
-/* UPDATE */
-
-function update(){
-
-if(!gameStarted) return;
-
-player.vy+=GRAVITY;
-
-player.x+=player.vx;
-player.y+=player.vy;
-
-
-/* SCREEN LOOP */
-
-if(player.x<-player.w) player.x=GAME_WIDTH;
-if(player.x>GAME_WIDTH) player.x=-player.w;
-
-
-/* PLATFORM COLLISION */
-
-platforms.forEach(p=>{
-
-if(player.vy>0 &&
-player.y+player.h>=p.y &&
-player.y+player.h<=p.y+12 &&
-player.x+player.w>p.x &&
-player.x<p.x+p.w){
-
-player.vy=JUMP;
-score++;
-
-}
-
-});
-
-
-/* SPRINGS */
-
-springs.forEach(s=>{
-
-if(player.vy>0 &&
-player.x+player.w>s.x &&
-player.x<s.x+s.w &&
-player.y+player.h>=s.y &&
-player.y+player.h<=s.y+20){
-
-player.vy=JUMP*1.8;
-
-}
-
-});
-
-
-/* COINS */
-
-coins.forEach(c=>{
-
-if(!c.collected &&
-player.x<c.x+c.w &&
-player.x+player.w>c.x &&
-player.y<c.y+c.h &&
-player.y+player.h>c.y){
-
-c.collected=true;
-score+=3;
-
-}
-
-});
-
-
-/* CAMERA */
-
-if(player.y<canvas.height*0.45){
-
-let dy=-player.vy;
-
-player.y=canvas.height*0.45;
-
-platforms.forEach(p=>p.y+=dy);
-springs.forEach(s=>s.y+=dy);
-coins.forEach(c=>c.y+=dy);
-
-}
-
-
-if(player.y>canvas.height){
-
-gameStarted=false;
-
-document.getElementById("finalScore").innerText="Score: "+score;
-
-document.getElementById("gameOverScreen").style.display="flex";
-
-}
-
-}
-
-
-/* DRAW */
-
+/* ===== DRAW ===== */
 function draw(){
-
-ctx.clearRect(0,0,canvas.width,canvas.height);
-
-ctx.drawImage(bgImage,0,0,canvas.width,canvas.height);
-
-ctx.drawImage(playerSkins[playerColor],player.x,player.y,player.w,player.h);
-
-
-platforms.forEach(p=>{
-
-ctx.fillStyle="black";
-ctx.fillRect(p.x,p.y,p.w,p.h);
-
-});
-
-
-springs.forEach(s=>{
-ctx.drawImage(springImage,s.x,s.y,s.w,s.h);
-});
-
-
-coins.forEach(c=>{
-if(!c.collected)
-ctx.drawImage(coinImage,c.x,c.y,c.w,c.h);
-});
-
-
-ctx.fillStyle="black";
-ctx.font="20px Arial";
-ctx.fillText(playerName+": "+score,10,25);
-
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.fillStyle=playerColor;
+  ctx.fillRect(player.x,player.y,player.w,player.h);
+  platforms.forEach(p=>{
+    if(p.broken)return;
+    ctx.fillStyle=p.type==="move"?"blue":p.type==="break"?"brown":"black";
+    ctx.fillRect(p.x,p.y,p.w,p.h);
+  });
+  ctx.fillStyle="purple";
+  monsters.forEach(m=>ctx.fillRect(m.x,m.y,m.w,m.h));
+  ctx.fillStyle="black";ctx.font="18px Arial";
+  ctx.fillText(`${playerName}: ${score}`,10,26);
 }
 
-
-/* LOOP */
-
-function loop(){
-
-update();
-draw();
-
+/* ===== LOOP ===== */
+function loop(t){
+  const dt=Math.min((t-lastTime)/16,1.5);
+  lastTime=t;
+  update(dt);draw();updateLeaderboard();
+  requestAnimationFrame(loop);
+}
 requestAnimationFrame(loop);
 
+/* ===== LEADERBOARD ===== */
+function updateLeaderboard(){
+  document.getElementById("leaderboard").innerHTML=
+    "<b>TOP 5</b><br>"+leaderboard.slice(0,5)
+    .map((p,i)=>`${i+1}. ${p.name}: ${p.score}`).join("<br>");
+}
+function saveScore(){
+  const e=leaderboard.find(p=>p.name===playerName);
+  if(e){if(score>e.score)e.score=score;}
+  else leaderboard.push({name:playerName,score});
+  leaderboard.sort((a,b)=>b.score-a.score);
+  localStorage.setItem("leaderboard",JSON.stringify(leaderboard));
 }
 
-loop();
+/* ===== GAME OVER ===== */
+function gameOver(){
+  saveScore();gameStarted=false;
+  document.getElementById("finalScore").innerText=`Score: ${score}`;
+  gameOverScreen.style.display="flex";
+}
+function restartGame(){gameOverScreen.style.display="none";startGame();}
+function goHome(){gameOverScreen.style.display="none";startScreen.style.display="flex";}
 
-
-/* CONTROLS */
-
+/* ===== CONTROLS ===== */
 addEventListener("keydown",e=>{
-
-if(!gameStarted) return;
-
-if(e.key==="ArrowLeft") player.vx=-SPEED;
-if(e.key==="ArrowRight") player.vx=SPEED;
-
+  if(!gameStarted)return;
+  if(e.key==="ArrowLeft")player.vx=-SPEED_X;
+  if(e.key==="ArrowRight")player.vx=SPEED_X;
 });
-
 addEventListener("keyup",()=>player.vx=0);
 
-
-canvas.addEventListener("touchstart",e=>{
-
-if(!gameStarted) return;
-
-if(e.touches[0].clientX<GAME_WIDTH/2)
-player.vx=-SPEED;
-else
-player.vx=SPEED;
-
-});
-
-canvas.addEventListener("touchend",()=>{
-
-player.vx=0;
-
-});
-
+  canvas.addEventListener("touchstart",e=>{
+  if(!gameStarted)return;
+  e.preventDefault();
+  player.vx=e.touches[0].clientX<canvas.width/2?-SPEED_X:SPEED_X;
+},{passive:false});
+canvas.addEventListener("touchend",e=>{
+  if(!gameStarted)return;
+  e.preventDefault();
+  player.vx=0;
+},{passive:false});
 </script>
 
 </body>
