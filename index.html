@@ -180,6 +180,25 @@ function startGame(){
   score=0;
   platforms=[];
   monsters=[];
+  // создаем монеты
+coins = [];
+for(let i=0;i<10;i++){
+  coins.push({
+    x: Math.random()*worldWidth,
+    y: Math.random()*worldHeight,
+    r:10
+  });
+}
+
+// создаем пружины
+springs = [];
+for(let i=0;i<4;i++){
+  springs.push({
+    x: Math.random()*worldWidth,
+    y: Math.random()*worldHeight,
+    r:15
+  });
+}
   player.x=GAME_WIDTH/2-player.w/2;
   player.y=canvas.height-200;
   player.vx=0;
