@@ -121,6 +121,12 @@ playerSkins.green.src = "img/player_green.png";
 playerSkins.blue.src  = "img/player_blue.png";
 playerSkins.red.src   = "img/player_red.png";
 playerSkins.purple.src= "img/player_purple.png";
+  
+  const springImage = new Image();
+springImage.src = "img/spring.png";
+
+const coinImage = new Image();
+coinImage.src = "img/coin.png";
 
 const monsterImages = [
   "img/monster1.png",
@@ -150,6 +156,8 @@ const SPEED_X = IS_MOBILE ? 4 : 3.5;
 /* ===== OBJECTS ===== */
 let platforms = [];
 let monsters = [];
+let springs = [];
+let coins = [];
 let lastTime = performance.now();
 
 /* ===== UI ===== */
@@ -201,13 +209,34 @@ function makePlatform(x,y,type){
 }
 function spawnPlatform(y){
   let r=Math.random(),type="normal";
+
   if(r<.12) type="break";
   else if(r<.28) type="move";
-  platforms.push(makePlatform(
-    Math.random()*(GAME_WIDTH-100), y, type
-  ));
-}
 
+  let p = makePlatform(Math.random()*(GAME_WIDTH-100), y, type);
+  platforms.push(p);
+
+  /* шанс пружины */
+  if(Math.random()<0.12){
+    springs.push({
+      x:p.x+p.w/2-12,
+      y:p.y-20,
+      w:24,
+      h:20
+    });
+  }
+
+  /* шанс монеты */
+  if(Math.random()<0.25){
+    coins.push({
+      x:p.x+p.w/2-12,
+      y:p.y-40,
+      w:24,
+      h:24,
+      collected:false
+    });
+  }
+}
 /* ===== MONSTERS ===== */
 function trySpawnMonster(p){
   if(score<6) return;
@@ -244,6 +273,16 @@ function update(dt){
       if(p.x<0||p.x+p.w>GAME_WIDTH) p.vx*=-1;
     }
     if(!p.broken&&player.vy>0&&
+       springs.forEach(s=>{
+  if(player.vy>0 &&
+    player.x+player.w>s.x &&
+    player.x<s.x+s.w &&
+    player.y+player.h>=s.y &&
+    player.y+player.h<=s.y+20){
+
+      player.vy = JUMP * 1.8;
+  }
+});
       player.y+player.h>=p.y&&
       player.y+player.h<=p.y+p.h+player.vy&&
       player.x+player.w>p.x&&player.x<p.x+p.w){
@@ -267,6 +306,8 @@ function update(dt){
     player.y=canvas.height*.45;
     platforms.forEach(p=>p.y+=dy);
     monsters.forEach(m=>m.y+=dy);
+    springs.forEach(s=>s.y+=dy);
+    coins.forEach(c=>c.y+=dy);
 
     platforms.forEach(p=>{
       if(p.y>canvas.height){
@@ -281,6 +322,17 @@ function update(dt){
 
   if(player.y>canvas.height) gameOver();
 }
+  coins.forEach(c=>{
+  if(!c.collected &&
+    player.x<c.x+c.w &&
+    player.x+player.w>c.x &&
+    player.y<c.y+c.h &&
+    player.y+player.h>c.y){
+
+      c.collected=true;
+      score+=3;
+  }
+});
 
 /* ===== DRAW ===== */
 function draw(){
@@ -297,6 +349,15 @@ function draw(){
     ctx.fillStyle=p.type==="move"?"blue":p.type==="break"?"brown":"black";
     ctx.fillRect(p.x,p.y,p.w,p.h);
   });
+
+  springs.forEach(s=>{
+  ctx.drawImage(springImage,s.x,s.y,s.w,s.h);
+});
+
+  coins.forEach(c=>{
+  if(!c.collected)
+  ctx.drawImage(coinImage,c.x,c.y,c.w,c.h);
+});
 
   monsters.forEach(m=>{
     ctx.drawImage(m.skin,m.x,m.y,m.w,m.h);
