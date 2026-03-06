@@ -515,23 +515,23 @@ function draw(){
 
   const img = platformImages[p.type] || platformImages.normal;
 
-  ctx.drawImage(img,p.x,p.y,p.w,p.h);
+  ctx.drawImage(img,p.x,p.y,p.drawW,p.drawH);
 });
 
 
   monsters.forEach(m=>{
-    ctx.drawImage(m.skin,m.x,m.y,m.w,m.h);
+    ctx.drawImage(m.skin,m.x,m.y,m.drawW,m.drawH);
   });
 
 
   springs.forEach(s=>{
-    ctx.drawImage(springImg,s.x,s.y,s.w,s.h);
+    ctx.drawImage(springImg,s.x,s.y,s.drawW,s.drawH);
   });
 
 
   coins.forEach(c=>{
     if(!c.taken)
-      ctx.drawImage(coinImg,c.x,c.y,c.w,c.h);
+     ctx.drawImage(coinImg,c.x,c.y,c.drawW,c.drawH);
   });
 
 
