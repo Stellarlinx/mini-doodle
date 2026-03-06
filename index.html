@@ -114,8 +114,7 @@ function resize(){
   canvas.width = GAME_WIDTH * dpr;
   canvas.height = innerHeight * dpr;
 
-  ctx.setTransform(1,0,0,1,0,0);
-  ctx.scale(dpr,dpr);
+  ctx.setTransform(dpr,0,0,dpr,0,0);
 }
 resize();
 addEventListener("resize", resize);
@@ -510,53 +509,41 @@ function update(dt){
 
 function draw(){
 
-  ctx.save();
-ctx.setTransform(1,0,0,1,0,0);
-ctx.clearRect(0,0,canvas.width,canvas.height);
-ctx.restore();
+  ctx.clearRect(0,0,GAME_WIDTH,innerHeight);
 
-  ctx.drawImage(bgImage,0,0,canvas.width,canvas.height);
-
+  ctx.drawImage(bgImage,0,0,GAME_WIDTH,innerHeight);
 
   ctx.drawImage(
-  playerSkins[playerColor],
-  player.x + (player.w - player.drawW)/2,
-  player.y + (player.h - player.drawH)/2,
-  player.drawW,
-  player.drawH
-);
-
+    playerSkins[playerColor],
+    player.x + (player.w - player.drawW)/2,
+    player.y + (player.h - player.drawH)/2,
+    player.drawW,
+    player.drawH
+  );
 
   platforms.forEach(p=>{
-  if(p.broken) return;
+    if(p.broken) return;
 
-  const img = platformImages[p.type] || platformImages.normal;
-
-  ctx.drawImage(img,p.x,p.y,p.drawW,p.drawH);
-});
-
+    const img = platformImages[p.type] || platformImages.normal;
+    ctx.drawImage(img,p.x,p.y,p.drawW,p.drawH);
+  });
 
   monsters.forEach(m=>{
     ctx.drawImage(m.skin,m.x,m.y,m.drawW,m.drawH);
   });
 
-
   springs.forEach(s=>{
     ctx.drawImage(springImg,s.x,s.y,s.drawW,s.drawH);
   });
-
 
   coins.forEach(c=>{
     if(!c.taken)
       ctx.drawImage(coinImg,c.x,c.y,c.drawW,c.drawH);
   });
 
-
   ctx.fillStyle="black";
   ctx.font="18px Arial";
-
   ctx.fillText(`${playerName}: ${score}`,10,26);
-
 }
 
 
