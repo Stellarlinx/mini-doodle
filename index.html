@@ -239,7 +239,7 @@ function startGame(){
   platforms.push(makePlatform(player.x-30,player.y+60,"normal"));
 
   for(let i=1;i<36;i++)
-    spawnPlatform(platforms[i-1].y-55);
+    spawnPlatform(platforms[i-1].y-50);
 }
 
 
@@ -249,7 +249,7 @@ function makePlatform(x,y,type){
   return{
     x,y,
     w:type==="normal"?65:55,
-    h:18,
+    h:24,
     type,
     vx:type==="move"?(Math.random()<.5?-1:1)*1.2:0,
     broken:false,
