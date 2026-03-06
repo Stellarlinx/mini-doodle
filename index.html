@@ -144,6 +144,18 @@ springImg.src = "img/spring.png";
 const coinImg = new Image();
 coinImg.src = "img/coin.png";
 
+  /* ===== PLATFORM IMAGES ===== */
+
+const platformImages = {
+  normal: new Image(),
+  move: new Image(),
+  break: new Image()
+};
+
+platformImages.normal.src = "img/platform_normal.png";
+platformImages.move.src = "img/platform_move.png";
+platformImages.break.src = "img/platform_break.png";
+
 
 /* ===== DATA ===== */
 
@@ -237,7 +249,7 @@ function makePlatform(x,y,type){
   return{
     x,y,
     w:type==="normal"?100:80,
-    h:12,
+    h:20,
     type,
     vx:type==="move"?(Math.random()<.5?-1:1)*1.2:0,
     broken:false,
@@ -468,15 +480,12 @@ function draw(){
 
 
   platforms.forEach(p=>{
-    if(p.broken) return;
+  if(p.broken) return;
 
-    ctx.fillStyle=
-      p.type==="move"?"blue":
-      p.type==="break"?"brown":
-      "black";
+  const img = platformImages[p.type] || platformImages.normal;
 
-    ctx.fillRect(p.x,p.y,p.w,p.h);
-  });
+  ctx.drawImage(img,p.x,p.y,p.w,p.h);
+});
 
 
   monsters.forEach(m=>{
