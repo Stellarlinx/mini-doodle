@@ -185,6 +185,8 @@ let monsters = [];
 let springs = [];
 let coins = [];
 
+let springBoost = false;
+
 let lastTime = performance.now();
 
 
@@ -362,6 +364,7 @@ function update(dt){
       if(p.type==="break") p.broken=true;
       else{
         player.vy=JUMP;
+        springBoost = false;
         if(!p.counted){score++;p.counted=true;}
       }
     }
@@ -381,6 +384,7 @@ function update(dt){
     ){
 
       player.vy = JUMP*1.8;
+      springBoost = true;
 
     }
 
@@ -414,12 +418,12 @@ function update(dt){
 
     if(m.x<0||m.x+m.w>GAME_WIDTH) m.vx*=-1;
 
-    if(
-      player.x<m.x+m.w &&
-      player.x+player.w>m.x &&
-      player.y<m.y+m.h &&
-      player.y+player.h>m.y
-    ) gameOver();
+    if(!springBoost &&
+  player.x<m.x+m.w &&
+  player.x+player.w>m.x &&
+  player.y<m.y+m.h &&
+  player.y+player.h>m.y
+) gameOver();
 
   });
 
