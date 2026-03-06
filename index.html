@@ -353,11 +353,11 @@ function update(dt){
       if(p.x<0||p.x+p.w>GAME_WIDTH) p.vx*=-1;
     }
 
-    if(!p.broken && player.vy > 0 &&
-  player.y + player.h >= p.y &&
-  player.y + player.h - player.vy <= p.y &&
-  player.x + player.w - 12 > p.x &&
-  player.x + 12 < p.x + p.w){
+    if(!p.broken && player.vy>0 &&
+  player.y+player.h>=p.y &&
+  player.y+player.h<=p.y+p.h+player.vy &&
+  player.x+player.w>p.x &&
+  player.x<p.x+p.w){
 
       if(p.type==="break") p.broken=true;
       else{
@@ -484,7 +484,7 @@ function draw(){
 
   const img = platformImages[p.type] || platformImages.normal;
 
-  ctx.drawImage(img,p.x-5,p.y,p.w+10,p.h);
+  ctx.drawImage(img,p.x,p.y,p.w,p.h);
 });
 
 
