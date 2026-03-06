@@ -259,12 +259,12 @@ function makePlatform(x,y,type){
     x,y,
 
     // ⭐ визуальный размер платформы
-    drawW:type==="normal"?70:60,
-    drawH:28,
+    drawW:type==="normal"?80:70,
+    drawH:32,
 
     // ⭐ физический хитбокс (меньше)
-    w:(type==="normal"?70:60)*0.85,
-    h:28*0.55,
+    w:(type==="normal"?80:70)*0.85,
+    h:32*0.5,
     type,
     vx:type==="move"?(Math.random()<.5?-1:1)*1.2:0,
     broken:false,
