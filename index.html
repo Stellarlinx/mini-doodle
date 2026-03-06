@@ -102,17 +102,19 @@ let IS_MOBILE = false;
 let GAME_WIDTH = 0;
 
 function resize(){
+
   IS_MOBILE = innerWidth < 768;
   GAME_WIDTH = IS_MOBILE ? innerWidth : 420;
-const dpr = window.devicePixelRatio || 1;
 
-canvas.width = GAME_WIDTH * dpr;
-canvas.height = innerHeight * dpr;
+  const dpr = window.devicePixelRatio || 1;
 
-canvas.style.width = GAME_WIDTH + "px";
-canvas.style.height = innerHeight + "px";
+  canvas.style.width = GAME_WIDTH + "px";
+  canvas.style.height = innerHeight + "px";
 
-ctx.scale(dpr,dpr);
+  canvas.width = GAME_WIDTH * dpr;
+  canvas.height = innerHeight * dpr;
+
+  ctx.setTransform(dpr,0,0,dpr,0,0);
 }
 resize();
 addEventListener("resize", resize);
