@@ -95,15 +95,25 @@ button{
 /* ===== CANVAS ===== */
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
+  ctx.imageSmoothingEnabled = false;
 
 let IS_MOBILE = false;
 let GAME_WIDTH = 0;
 
 function resize(){
+
+  const dpr = window.devicePixelRatio || 1;
+
   IS_MOBILE = innerWidth < 768;
   GAME_WIDTH = IS_MOBILE ? innerWidth : 420;
-  canvas.width = GAME_WIDTH;
-  canvas.height = innerHeight;
+
+  canvas.width = GAME_WIDTH * dpr;
+  canvas.height = innerHeight * dpr;
+
+  canvas.style.width = GAME_WIDTH + "px";
+  canvas.style.height = innerHeight + "px";
+
+  ctx.setTransform(dpr,0,0,dpr,0,0);
 }
 resize();
 addEventListener("resize", resize);
@@ -157,7 +167,7 @@ let leaderboard = JSON.parse(localStorage.getItem("leaderboard")) || [];
 /* ===== PLAYER ===== */
 
 const player = {
-  x:0,y:0,w:40,h:40,vx:0,vy:0
+  x:0,y:0,w:60,h:60,vx:0,vy:0
 };
 
 const GRAVITY = IS_MOBILE ? 0.4 : 0.38;
@@ -270,8 +280,8 @@ function trySpawnSpring(p){
   springs.push({
     x:p.x+p.w/2-10,
     y:p.y-20,
-    w:20,
-    h:20
+    w:30,
+    h:30
   });
 
 }
@@ -286,8 +296,8 @@ function trySpawnCoin(p){
   coins.push({
     x:p.x+p.w/2-12,
     y:p.y-40,
-    w:24,
-    h:24,
+    w:34,
+    h:34,
     taken:false
   });
 
