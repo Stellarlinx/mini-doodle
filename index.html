@@ -101,19 +101,10 @@ let IS_MOBILE = false;
 let GAME_WIDTH = 0;
 
 function resize(){
-
-  const dpr = window.devicePixelRatio || 1;
-
   IS_MOBILE = innerWidth < 768;
   GAME_WIDTH = IS_MOBILE ? innerWidth : 420;
-
-  canvas.width = GAME_WIDTH * dpr;
-  canvas.height = innerHeight * dpr;
-
-  canvas.style.width = GAME_WIDTH + "px";
-  canvas.style.height = innerHeight + "px";
-
-  ctx.scale(dpr, dpr);
+  canvas.width = GAME_WIDTH;
+  canvas.height = innerHeight;
 }
 resize();
 addEventListener("resize", resize);
