@@ -114,7 +114,8 @@ function resize(){
   canvas.width = GAME_WIDTH * dpr;
   canvas.height = innerHeight * dpr;
 
-  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.scale(dpr,dpr);
 }
 resize();
 addEventListener("resize", resize);
@@ -509,7 +510,10 @@ function update(dt){
 
 function draw(){
 
-  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.save();
+ctx.setTransform(1,0,0,1,0,0);
+ctx.clearRect(0,0,canvas.width,canvas.height);
+ctx.restore();
 
   ctx.drawImage(bgImage,0,0,canvas.width,canvas.height);
 
