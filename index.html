@@ -170,7 +170,14 @@ let leaderboard = JSON.parse(localStorage.getItem("leaderboard")) || [];
 /* ===== PLAYER ===== */
 
 const player = {
-  x:0,y:0,w:60,h:60,vx:0,vy:0
+  x:0,
+  y:0,
+  w:60,      // физический хитбокс
+  h:60,
+  drawW:50,  // визуальный размер (можно менять)
+  drawH:50,
+  vx:0,
+  vy:0
 };
 
 const GRAVITY = IS_MOBILE ? 0.4 : 0.38;
@@ -478,9 +485,12 @@ function draw(){
 
 
   ctx.drawImage(
-    playerSkins[playerColor],
-    player.x,player.y,player.w,player.h
-  );
+  playerSkins[playerColor],
+  player.x + (player.w - player.drawW)/2,
+  player.y + (player.h - player.drawH)/2,
+  player.drawW,
+  player.drawH
+);
 
 
   platforms.forEach(p=>{
