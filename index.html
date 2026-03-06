@@ -113,7 +113,7 @@ function resize(){
   canvas.style.width = GAME_WIDTH + "px";
   canvas.style.height = innerHeight + "px";
 
-  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.scale(dpr, dpr);
 }
 resize();
 addEventListener("resize", resize);
