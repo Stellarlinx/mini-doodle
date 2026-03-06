@@ -510,23 +510,20 @@ function update(dt){
 
 function draw(){
 
-  ctx.setTransform(1,0,0,1,0,0);
-ctx.clearRect(0,0,canvas.width,canvas.height);
-ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
+  ctx.clearRect(0,0,GAME_WIDTH,innerHeight);
 
   ctx.drawImage(bgImage,0,0,GAME_WIDTH,innerHeight);
 
   ctx.drawImage(
     playerSkins[playerColor],
-    player.x + (player.w - player.drawW)/2,
-    player.y + (player.h - player.drawH)/2,
+    player.x,
+    player.y,
     player.drawW,
     player.drawH
   );
 
   platforms.forEach(p=>{
     if(p.broken) return;
-
     const img = platformImages[p.type] || platformImages.normal;
     ctx.drawImage(img,p.x,p.y,p.drawW,p.drawH);
   });
@@ -547,6 +544,7 @@ ctx.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
   ctx.fillStyle="black";
   ctx.font="18px Arial";
   ctx.fillText(`${playerName}: ${score}`,10,26);
+
 }
 
 
