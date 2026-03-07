@@ -97,26 +97,16 @@ const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
 ctx.imageSmoothingEnabled = false;
-ctx.imageSmoothingQuality = "high";
   
 let IS_MOBILE = false;
 let GAME_WIDTH = 0;
 
 function resize(){
-
   IS_MOBILE = innerWidth < 768;
   GAME_WIDTH = IS_MOBILE ? innerWidth : 420;
 
-  const ratio = window.devicePixelRatio || 1;
-
-  canvas.width = GAME_WIDTH * ratio;
-  canvas.height = innerHeight * ratio;
-
-  canvas.style.width = GAME_WIDTH + "px";
-  canvas.style.height = innerHeight + "px";
-
-  ctx.setTransform(ratio,0,0,ratio,0,0);
-
+  canvas.width = GAME_WIDTH;
+  canvas.height = innerHeight;
 }
 resize();
 addEventListener("resize", resize);
